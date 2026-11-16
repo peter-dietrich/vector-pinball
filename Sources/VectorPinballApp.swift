@@ -317,7 +317,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let dy = ball.position.y - (node?.position.y ?? 0)
         if abs(dx) < 80 && dy > -10 && dy < 53 {
             let vx = left ? 110.0 : -110.0
-            ball.physicsBody?.applyImpulse(CGVector(dx: vx, dy: 540))
+            ball.physicsBody?.applyImpulse(CGVector(dx: vx * 0.075, dy: 36))
             lastFlipperKick = simTime
         }
     }
@@ -327,9 +327,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         nudges += 1
         let impulse: CGVector
         switch direction {
-        case 123: impulse = CGVector(dx: -65, dy: 35)
-        case 124: impulse = CGVector(dx: 65, dy: 35)
-        default: impulse = CGVector(dx: 0, dy: 100)
+        case 123: impulse = CGVector(dx: -5, dy: 2.5)
+        case 124: impulse = CGVector(dx: 5, dy: 2.5)
+        default: impulse = CGVector(dx: 0, dy: 7.5)
         }
         ball.physicsBody?.applyImpulse(impulse)
         if nudges == 4 {
@@ -362,7 +362,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             pulse.run(.sequence([.group([.scale(to: 2.5, duration: 0.18), .fadeOut(withDuration: 0.18)]), .removeFromParent()]))
             if let ball {
                 let dx = ball.position.x - contact.contactPoint.x
-                ball.physicsBody?.applyImpulse(CGVector(dx: dx*2, dy: 90))
+                ball.physicsBody?.applyImpulse(CGVector(dx: dx*0.12, dy: 8))
             }
         } else if bits & Collision.target != 0 {
             addScore(250)
