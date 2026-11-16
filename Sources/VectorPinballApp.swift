@@ -53,6 +53,7 @@ private enum Collision {
     static let bumper: UInt32 = 1 << 1
     static let target: UInt32 = 1 << 2
     static let flipper: UInt32 = 1 << 3
+    static let lane: UInt32 = 1 << 4
 }
 
 final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
@@ -78,10 +79,21 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var showDebug = false
     private var lastFlipperKick: TimeInterval = 0
     private var simTime: TimeInterval = 0
+    private var bankHits = Set<Int>()
+    private var laneHits = Set<Int>()
+    private var bonus = 0
+    private var multiplier = 1
+    private var tilted = false
+    private var lastContactTime = [String: TimeInterval]()
+    private var targetNodes = [SKShapeNode]()
+    private var laneNodes = [SKShapeNode]()
+    private var bonusLabel: SKLabelNode!
+    private var tiltLabel: SKLabelNode!
+
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.025, green: 0.035, blue: 0.075, alpha: 1)
-        physicsWorld.gravity = CGVector(dx: 0, dy: -5.9)
+        physicsWorld.gravity = CGVector(dx: 0, dy: -520)
         physicsWorld.contactDelegate = self
         addChild(playfield)
         buildTable()
@@ -142,6 +154,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         for i in 0..<5 {
             let target = SKShapeNode(rectOf: CGSize(width: 22, height: 31), cornerRadius: 3)
             target.position = CGPoint(x: 105 + 46*i, y: 569 - ((i % 2) * 13))
+            target.name = "target_\(i)"
             target.fillColor = i % 2 == 0 ? .systemOrange : .systemTeal
             target.strokeColor = .white
             target.lineWidth = 1.7
@@ -151,6 +164,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             target.physicsBody?.contactTestBitMask = Collision.ball
             target.physicsBody?.restitution = 0.9
             playfield.addChild(target)
+            targetNodes.append(target)
         }
 
         for p in [CGPoint(x: 146, y: 464), CGPoint(x: 248, y: 464), CGPoint(x: 197, y: 395)] {
@@ -177,7 +191,15 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             light.position = CGPoint(x: x, y: 330)
             light.fillColor = .init(red: 0.24, green: 0.70, blue: 0.77, alpha: 1)
             light.strokeColor = .white
+            light.name = "lane_\(laneNodes.count)"
+            let sensor = SKPhysicsBody(circleOfRadius: 11)
+            sensor.isDynamic = false
+            sensor.categoryBitMask = Collision.lane
+            sensor.contactTestBitMask = Collision.ball
+            sensor.collisionBitMask = 0
+            light.physicsBody = sensor
             playfield.addChild(light)
+            laneNodes.append(light)
         }
         label("BONUS LANES", at: CGPoint(x: 197, y: 306), size: 12, color: .init(red: 0.96, green: 0.72, blue: 0.41, alpha: 1))
         for (x, mirror) in [(105.0, false), (287.0, true)] {
@@ -222,6 +244,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         statusLabel = label("", at: CGPoint(x: 210, y: 28), size: 14, color: .systemYellow)
         subtitleLabel = label("", at: CGPoint(x: 210, y: 13), size: 9, color: .init(red: 0.62, green: 0.82, blue: 0.93, alpha: 1))
         debugLabel = label("", at: CGPoint(x: 208, y: 268), size: 10, color: .systemGreen)
+        debugLabel.isHidden = true
+        bonusLabel = label("", at: CGPoint(x: 210, y: 686), size: 10, color: .systemOrange)
+        tiltLabel = label("", at: CGPoint(x: 210, y: 54), size: 11, color: .systemRed)
         refreshHUD()
     }
 
@@ -232,6 +257,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func refreshHUD() {
         scoreLabel.text = "SCORE \(score)      BEST \(highScore)      BALL \(ballNumber)/3"
+        bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
+        tiltLabel.text = tilted ? "TILT — BONUS FORFEITED" : ""
         if running && !awaitingServe {
             statusLabel.text = plungerCharging ? "PLUNGER \(Int(plungerCharge*100))%" : "PLAY BALL"
             subtitleLabel.text = "HOLD SPACE TO CHARGE • RELEASE TO LAUNCH"
@@ -249,6 +276,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         awaitingServe = false
         plungerCharging = false
         plungerCharge = 0
+        bonus = 0
+        multiplier = 1
+        bankHits.removeAll()
+        laneHits.removeAll()
+        targetNodes.forEach { $0.alpha = 1 }
+        laneNodes.forEach { $0.alpha = 1 }
+        lastContactTime.removeAll()
         serveBall()
     }
 
@@ -269,13 +303,14 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         body.mass = 0.075
         body.categoryBitMask = Collision.ball
         body.collisionBitMask = UInt32.max
-        body.contactTestBitMask = Collision.bumper | Collision.target
+        body.contactTestBitMask = Collision.bumper | Collision.target | Collision.lane
         body.usesPreciseCollisionDetection = true
         node.physicsBody = body
         node.zPosition = 10
         playfield.addChild(node)
         ball = node
         awaitingServe = false
+        tilted = false
         refreshHUD()
     }
 
@@ -293,12 +328,12 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         case 0: setFlipper(left: true, active: pressed)
         case 2: setFlipper(left: false, active: pressed)
         case 49:
-            if pressed { plungerCharging = true }
+            if pressed, running, (ball?.position.x ?? 0) > 345 { plungerCharging = true }
             else if plungerCharging { plungerCharging = false; launchBall() }
         case 123, 124, 126:
             if pressed { nudge(direction: key) }
         case 35:
-            if pressed { isPaused.toggle(); statusLabel.text = isPaused ? "PAUSED" : "PLAY BALL" }
+            if pressed, running { isPaused.toggle(); statusLabel.text = isPaused ? "PAUSED" : "PLAY BALL" }
         case 17:
             if pressed { showDebug.toggle(); debugLabel.isHidden = !showDebug }
         default: break
@@ -311,7 +346,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let angle: CGFloat = left ? (active ? 0.38 : -0.30) : (active ? -0.38 : 0.30)
         node?.removeAction(forKey: "flip")
         node?.run(SKAction.rotate(toAngle: angle, duration: active ? 0.045 : 0.085, shortestUnitArc: true), withKey: "flip")
-        guard active, running, let ball, simTime-lastFlipperKick > 0.045 else { return }
+        guard active, running, !tilted, let ball, simTime-lastFlipperKick > 0.045 else { return }
         // A tuned upward kick supplements SpriteKit's static rotating-shape collision.
         let dx = ball.position.x - (node?.position.x ?? 0)
         let dy = ball.position.y - (node?.position.y ?? 0)
@@ -333,13 +368,14 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         ball.physicsBody?.applyImpulse(impulse)
         if nudges == 4 {
+            tilted = true
             statusLabel.text = "TILT — NUDGE DISABLED"
             subtitleLabel.text = "NUDGE LIMIT RESETS NEXT BALL"
         }
     }
 
     private func addScore(_ points: Int) {
-        guard running else { return }
+        guard running, !tilted else { return }
         score += points
         if score > highScore {
             highScore = score
@@ -400,14 +436,21 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ball = nil
         plungerCharging = false
         nudges = 0
+        let earned = tilted ? 0 : bonus * multiplier
+        if earned > 0 { addScore(earned) }
+        bonus = 0
+        bankHits.removeAll()
+        laneHits.removeAll()
+        targetNodes.forEach { $0.alpha = 1 }
+        laneNodes.forEach { $0.alpha = 1 }
         if ballNumber >= 3 {
             running = false
             statusLabel.text = "GAME OVER — RETURN TO REPLAY"
-            subtitleLabel.text = "FINAL SCORE \(score) • BEST \(highScore)"
+            subtitleLabel.text = "FINAL SCORE \(score) • BEST \(highScore) • BONUS \(earned)"
         } else {
             ballNumber += 1
             statusLabel.text = "BALL DRAINED"
-            subtitleLabel.text = "NEXT BALL READY"
+            subtitleLabel.text = "BONUS \(earned) • NEXT BALL READY"
             run(.sequence([.wait(forDuration: 0.95), .run { [weak self] in self?.serveBall() }]))
         }
         refreshHUD()
