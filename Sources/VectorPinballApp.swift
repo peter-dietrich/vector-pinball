@@ -135,6 +135,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         frame.strokeColor = SKColor(red: 0.70, green: 0.53, blue: 0.30, alpha: 1)
         frame.lineWidth = 6
         playfield.addChild(frame)
+        // Printed starburst rings evoke silkscreened early-eighties playfields.
+        let artwork = SKShapeNode(ellipseOf: CGSize(width: 290, height: 330))
+        artwork.position = CGPoint(x: 197, y: 421)
+        artwork.strokeColor = SKColor(red: 0.95, green: 0.46, blue: 0.28, alpha: 0.36)
+        artwork.lineWidth = 2
+        artwork.fillColor = .clear
+        playfield.addChild(artwork)
 
         wall([CGPoint(x: 45, y: 115), CGPoint(x: 45, y: 605), CGPoint(x: 70, y: 663), CGPoint(x: 210, y: 682),
               CGPoint(x: 345, y: 663), CGPoint(x: 373, y: 605), CGPoint(x: 373, y: 72)])
@@ -202,6 +209,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             laneNodes.append(light)
         }
         label("BONUS LANES", at: CGPoint(x: 197, y: 306), size: 12, color: .init(red: 0.96, green: 0.72, blue: 0.41, alpha: 1))
+        label("COMPLETE TARGET BANK FOR X2", at: CGPoint(x: 197, y: 514), size: 9, color: .systemYellow)
         for (x, mirror) in [(105.0, false), (287.0, true)] {
             let path = CGMutablePath()
             path.move(to: CGPoint(x: x - 27, y: 225))
@@ -385,10 +393,16 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     }
 
     func didBegin(_ contact: SKPhysicsContact) {
+        guard running, !tilted else { return }
         let bits = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
-        if bits & Collision.ball == 0 { return }
+        guard bits & Collision.ball != 0 else { return }
+        let other = contact.bodyA.categoryBitMask == Collision.ball ? contact.bodyB : contact.bodyA
+        let key = other.node?.name ?? "bumper_\(Int(contact.contactPoint.x))_\(Int(contact.contactPoint.y))"
+        guard simTime - (lastContactTime[key] ?? -100) > 0.18 else { return }
+        lastContactTime[key] = simTime
         if bits & Collision.bumper != 0 {
             addScore(100)
+            bonus += 25
             let pulse = SKShapeNode(circleOfRadius: 20)
             pulse.position = contact.contactPoint
             pulse.strokeColor = .yellow
@@ -398,11 +412,37 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             pulse.run(.sequence([.group([.scale(to: 2.5, duration: 0.18), .fadeOut(withDuration: 0.18)]), .removeFromParent()]))
             if let ball {
                 let dx = ball.position.x - contact.contactPoint.x
-                ball.physicsBody?.applyImpulse(CGVector(dx: dx*0.12, dy: 8))
+                ball.physicsBody?.applyImpulse(CGVector(dx: dx * 0.12, dy: 8))
             }
         } else if bits & Collision.target != 0 {
             addScore(250)
+            bonus += 100
+            if let name = other.node?.name, let index = Int(name.replacingOccurrences(of: "target_", with: "")), !bankHits.contains(index) {
+                bankHits.insert(index)
+                targetNodes[index].alpha = 0.35
+                if bankHits.count == targetNodes.count {
+                    multiplier = min(5, multiplier + 1)
+                    addScore(2000)
+                    bankHits.removeAll()
+                    targetNodes.forEach { $0.alpha = 1 }
+                    statusLabel.text = "TARGET BANK COMPLETE! X\(multiplier)"
+                }
+            }
+        } else if bits & Collision.lane != 0 {
+            if let name = other.node?.name, let index = Int(name.replacingOccurrences(of: "lane_", with: "")), !laneHits.contains(index) {
+                laneHits.insert(index)
+                addScore(500)
+                bonus += 250
+                laneNodes[index].alpha = 0.35
+                if laneHits.count == laneNodes.count {
+                    addScore(2500)
+                    laneHits.removeAll()
+                    laneNodes.forEach { $0.alpha = 1 }
+                    statusLabel.text = "ALL LANES! +2,500"
+                }
+            }
         }
+        bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
     }
 
     override func update(_ currentTime: TimeInterval) {
