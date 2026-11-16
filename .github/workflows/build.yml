@@ -1,0 +1,13 @@
+name: macOS Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Vector Pinball
+        run: xcodebuild -project VectorPinball.xcodeproj -scheme VectorPinball -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
