@@ -74,6 +74,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var rightActive = false
     private var plungerCharging = false
     private var plungerCharge = 0.0
+    private var travelingShooterLane = false
     private var lastTime: TimeInterval = 0
     private var nudges = 0
     private var showDebug = false
@@ -284,6 +285,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         awaitingServe = false
         plungerCharging = false
         plungerCharge = 0
+        travelingShooterLane = false
         bonus = 0
         multiplier = 1
         bankHits.removeAll()
@@ -318,16 +320,23 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         playfield.addChild(node)
         ball = node
         awaitingServe = false
+        travelingShooterLane = false
         tilted = false
         refreshHUD()
     }
 
     private func launchBall() {
-        guard running, let ball, ball.position.x > 345, ball.position.y < 180 else { return }
-        ball.physicsBody?.affectedByGravity = true
-        ball.physicsBody?.velocity = CGVector(dx: -85, dy: 580 + plungerCharge * 530)
+        guard running, !travelingShooterLane, let ball,
+              ball.position.x > 345, ball.position.y < 180 else { return }
+        travelingShooterLane = true
+        // Keep the ball centered in the dedicated shooter channel until it reaches
+        // the upper feed. A leftward impulse here caused it to hit the lane divider.
+        ball.physicsBody?.affectedByGravity = false
+        ball.physicsBody?.velocity = CGVector(dx: 0, dy: 770 + plungerCharge * 200)
+        plungerCharging = false
         plungerCharge = 0
-        refreshHUD()
+        statusLabel.text = "BALL LAUNCHED"
+        subtitleLabel.text = "USE A / D OR SHIFT FOR FLIPPERS"
     }
 
     func handleKey(_ key: UInt16, pressed: Bool) {
@@ -451,9 +460,30 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         simTime += dt
         if plungerCharging && running {
             plungerCharge = min(1, plungerCharge + dt/1.2)
-            refreshHUD()
+            if plungerCharge >= 1 {
+                // Automatic launch provides a reliable fallback if macOS does
+                // not deliver keyUp (e.g. focus or modifier-key interactions).
+                launchBall()
+            } else {
+                refreshHUD()
+            }
         }
         guard running, let ball, !awaitingServe else { return }
+        if travelingShooterLane {
+            if ball.position.y >= 568 {
+                travelingShooterLane = false
+                // Feed into the upper-right playfield, clear of both shooter
+                // divider and outside cabinet walls.
+                ball.position = CGPoint(x: 319, y: 609)
+                ball.physicsBody?.affectedByGravity = true
+                ball.physicsBody?.velocity = CGVector(dx: -145, dy: 130)
+                statusLabel.text = "PLAY BALL"
+            } else if ball.position.y < 75 {
+                // Safety reset for an unexpected lane collision.
+                ball.position = CGPoint(x: 362, y: 105)
+                ball.physicsBody?.velocity = CGVector(dx: 0, dy: 800)
+            }
+        }
         if ball.position.y < 46 || ball.position.x < 25 || ball.position.x > 395 {
             drainBall()
             return
@@ -475,6 +505,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ball?.removeFromParent()
         ball = nil
         plungerCharging = false
+        travelingShooterLane = false
         nudges = 0
         let earned = tilted ? 0 : bonus * multiplier
         if earned > 0 { addScore(earned) }
