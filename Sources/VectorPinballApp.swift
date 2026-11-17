@@ -95,7 +95,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "GAMEPLAY STABILITY v0.5.1"
+    private let buildTag = "PLAYER CONTROL v0.5.2"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -289,8 +289,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             slingshot.physicsBody?.restitution = 0.8
             playfield.addChild(slingshot)
         }
-        leftFlipper = makeFlipper(at: CGPoint(x: 125, y: 121), left: true)
-        rightFlipper = makeFlipper(at: CGPoint(x: 274, y: 121), left: false)
+        leftFlipper = makeFlipper(at: CGPoint(x: 122, y: 121), left: true)
+        rightFlipper = makeFlipper(at: CGPoint(x: 277, y: 121), left: false)
         label("LAUNCH", at: CGPoint(x: 362, y: 48), size: 8, color: .systemOrange)
         label(buildTag, at: CGPoint(x: 210, y: 657), size: 9, color: .systemGreen)
         buildMechanicalArt()
@@ -314,7 +314,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         shape.fillColor = .clear
         shape.strokeColor = .clear
         shape.lineWidth = 0
-        let armor = SiegeMechanicalArt.sprite(.flipper, size: CGSize(width: 82, height: 25), mirrored: !left)
+        let armor = SiegeMechanicalArt.sprite(.flipper, size: CGSize(width: 70, height: 23), mirrored: !left)
         armor.position = CGPoint(x: sign * 35, y: 0)
         shape.addChild(armor)
         // No physics body: the manual flipper solver uses the same endpoints.
@@ -882,8 +882,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         // Swept contact catches a falling ball between fixed steps.
         if (p.y < 190 || previous.y < 190) && p.y > 68 {
-            if p.x > 100 && p.x < 215 { collideFlipper(&p, previous: previous, left: true) }
-            if p.x > 183 && p.x < 299 { collideFlipper(&p, previous: previous, left: false) }
+            if p.x > 104 && p.x < 198 { collideFlipper(&p, previous: previous, left: true) }
+            if p.x > 201 && p.x < 295 { collideFlipper(&p, previous: previous, left: false) }
         }
         // Stop long-lived ball/post/flipper overlap loops without disturbing
         // normal slow rolls: only rescue in a tight lower playfield pocket.
@@ -929,7 +929,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func collideFlipper(_ p: inout CGPoint, previous: CGPoint, left: Bool) {
         let active = left ? leftActive : rightActive
-        let pivot = CGPoint(x: left ? 125.0 : 274.0, y: 121.0)
+        let pivot = CGPoint(x: left ? 122.0 : 277.0, y: 121.0)
         let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
         let dir: CGFloat = left ? 1 : -1
         let length: CGFloat = 70
