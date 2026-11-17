@@ -2,6 +2,17 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
+## v0.4.0 — Vector Siege art preview
+
+- The first themed pinball playfield is a **Vector Siege tribute**.
+- Press **B** in-game to import the supplied portrait PNG background. It is stored in Application Support and reused on future launches.
+- Dynamic ball, bumpers, flippers, targets and scoring remain independent overlay objects.
+- The background fills and clips within the playfield without distorting the source art.
+- Vector Barrage and Vector Drift themes are planned next; see [table roadmap](docs/TABLE_THEMES.md).
+- Version identifier: `VECTOR SIEGE TABLE v0.4.0`.
+
+**Mac test required:** Source is committed, but importing and rendering have not yet been verified through an actual macOS Xcode build.
+
 ## v0.3.0 — ball engine rebuild (Mac playtest required)
 
 The ball now uses a fixed-step 120 Hz simulation with explicit table boundaries, target and bumper collisions, scoring, drain handling, and controlled flipper contact. The previous SpriteKit dynamic ball body and multiple competing impulse paths have been removed. The shooter lane still uses a scripted entry, but gameplay afterward is handled by one solver. A green `NEW BALL ENGINE v0.3.0` build identifier is visible on the playfield.
@@ -37,6 +48,7 @@ xcodebuild -project VectorPinball.xcodeproj -scheme VectorPinball -destination '
 | Key | Action |
 | --- | --- |
 | Return | Start / restart game |
+| B | Import/replace table background art |
 | A or Left Shift | Left flipper (press and hold) |
 | D or Right Shift | Right flipper (press and hold) |
 | Space | Hold to charge plunger, release to launch |
