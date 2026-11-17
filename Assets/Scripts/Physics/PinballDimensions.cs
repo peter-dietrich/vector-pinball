@@ -12,7 +12,7 @@ namespace FunCity.Pinball
         public const float BallMassKg = 0.08f;
         public const float FlipperLength = 0.85f;
         public const float FlipperWidth = 0.18f;
-        public const float FlipperPivotAbsX = 1.05f;
+        public const float FlipperPivotAbsX = 0.915f;
         public const float FlipperPivotY = 0.85f;
         public const float FlipperRestAngleDeg = 24f;
         public const float FlipperActiveAngleDeg = 30f;
