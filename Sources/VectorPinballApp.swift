@@ -77,7 +77,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "NEW BALL ENGINE v0.3.2"
+    private let buildTag = "FLIPPER GEOMETRY FIX v0.3.3"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -246,8 +246,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             slingshot.physicsBody?.restitution = 0.8
             playfield.addChild(slingshot)
         }
-        leftFlipper = makeFlipper(at: CGPoint(x: 139, y: 121), left: true)
-        rightFlipper = makeFlipper(at: CGPoint(x: 260, y: 121), left: false)
+        leftFlipper = makeFlipper(at: CGPoint(x: 125, y: 121), left: true)
+        rightFlipper = makeFlipper(at: CGPoint(x: 274, y: 121), left: false)
         label("LAUNCH", at: CGPoint(x: 362, y: 48), size: 8, color: .systemOrange)
         label(buildTag, at: CGPoint(x: 210, y: 657), size: 9, color: .systemGreen)
         buildMechanicalArt()
@@ -257,7 +257,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         // Pivot-local, tapered original pinball bat: broad at the hinge,
         // narrower and rounded at the inward-facing tip.
         let sign: CGFloat = left ? 1 : -1
-        let length: CGFloat = 92 // was 78
+        let length: CGFloat = 70 // pivot-to-tip, not the old centered bat width
         let path = CGMutablePath()
         path.move(to: CGPoint(x: 0, y: -11))
         path.addLine(to: CGPoint(x: sign * (length - 8), y: -6.5))
@@ -267,7 +267,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         path.closeSubpath()
         let shape = SKShapeNode(path: path)
         shape.position = position
-        shape.zRotation = left ? -0.30 : 0.30
+        shape.zRotation = left ? -0.23 : 0.23
         shape.fillColor = SKColor(red: 0.79, green: 0.16, blue: 0.13, alpha: 1)
         shape.strokeColor = SKColor(red: 1, green: 0.78, blue: 0.42, alpha: 1)
         shape.lineWidth = 2.5
@@ -454,7 +454,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     func setFlipper(left: Bool, active: Bool) {
         if left { leftActive = active } else { rightActive = active }
         let node = left ? leftFlipper : rightFlipper
-        let angle: CGFloat = left ? (active ? 0.38 : -0.30) : (active ? -0.38 : 0.30)
+        let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
         node?.removeAction(forKey: "flip")
         node?.run(SKAction.rotate(toAngle: angle,
                                    duration: active ? 0.045 : 0.085,
@@ -716,9 +716,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         // Left/right flippers return the ball only on actual contact with
         // their swept region, not whenever the ball enters a broad rectangle.
-        if p.y > 91 && p.y < 180 {
-            if p.x > 123 && p.x < 247 { collideFlipper(&p, left: true) }
-            if p.x > 152 && p.x < 277 { collideFlipper(&p, left: false) }
+        if p.y > 91 && p.y < 174 {
+            if p.x > 108 && p.x < 202 { collideFlipper(&p, left: true) }
+            if p.x > 197 && p.x < 291 { collideFlipper(&p, left: false) }
         }
         ball.position = p
         bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
@@ -747,10 +747,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func collideFlipper(_ p: inout CGPoint, left: Bool) {
         let active = left ? leftActive : rightActive
-        let pivot = CGPoint(x: left ? 139.0 : 260.0, y: 121.0)
-        let angle: CGFloat = left ? (active ? 0.38 : -0.30) : (active ? -0.38 : 0.30)
+        let pivot = CGPoint(x: left ? 125.0 : 274.0, y: 121.0)
+        let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
         let dir: CGFloat = left ? 1 : -1
-        let length: CGFloat = 92
+        let length: CGFloat = 70
         let tip = CGPoint(x: pivot.x + dir * length * cos(angle),
                           y: pivot.y + dir * length * sin(angle))
         let dx = tip.x - pivot.x, dy = tip.y - pivot.y
