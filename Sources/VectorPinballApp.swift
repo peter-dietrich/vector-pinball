@@ -727,7 +727,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             loops += 1
         }
         simulationRemainder = min(simulationRemainder, 0.05)
-        if ball.position.y < 60 {
+        if ball.position.y < 60 || (ball.position.y < 240 && (ball.position.x < 42 || ball.position.x > 342)) {
             drainBall()
             return
         }
@@ -770,10 +770,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         p.y += ballVelocity.dy * dt
 
         // Outside rails (with ball radius). Bottom stays open for real drains.
-        if p.x < 55 && p.y > 110 {
+        if p.x < 55 && p.y > 247 {
             p.x = 55
             ballVelocity.dx = abs(ballVelocity.dx) * 0.72
-        } else if p.x > 334 && p.y > 110 {
+        } else if p.x > 334 && p.y > 247 {
             p.x = 334
             ballVelocity.dx = -abs(ballVelocity.dx) * 0.72
         }
@@ -793,8 +793,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             || collideSegment(&p, CGPoint(x: 291, y: 239), CGPoint(x: 284, y: 190), restitution: 0.94)
         if (leftSling || rightSling) && simTime - lastSlingshot > 0.16 {
             lastSlingshot = simTime
-            ballVelocity.dx += leftSling ? 125 : -125
-            ballVelocity.dy = max(ballVelocity.dy, 175)
+            ballVelocity.dx += (leftSling ? 1 : -1) * CGFloat.random(in: 82...125)
+            ballVelocity.dy = max(ballVelocity.dy, CGFloat.random(in: 155...195))
             flipperImpact(at: p)
         }
 
@@ -888,8 +888,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let ny = (p.y-q.y) / max(0.01, distance)
         p.x = q.x+nx*9
         p.y = q.y+ny*9
-        reflect(nx: nx, ny: ny, restitution: restitution)
-        return true
+        let toward = ballVelocity.dx*nx + ballVelocity.dy*ny
+        if toward < -0.5 { reflect(nx: nx, ny: ny, restitution: restitution) }
+        return toward < -0.5
     }
 
     private func collideFlipper(_ p: inout CGPoint, previous: CGPoint, left: Bool) {
