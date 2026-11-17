@@ -95,8 +95,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "PLAYER CONTROL v0.5.2"
+    private let buildTag = "SWEPT COLLISIONS v0.5.3"
     private var ballVelocity = CGVector.zero
+    private var launchVariation: CGFloat = 0
+    private var recentFlipperContact = [Bool: TimeInterval]()
     private var simulationRemainder = 0.0
     private var ballInShooter = true
     private var bumperNodes = [SKShapeNode]()
@@ -471,6 +473,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         multiplier = 1
         lastLeftKick = -10
         lastRightKick = -10
+        recentFlipperContact.removeAll()
         bankHits.removeAll()
         laneHits.removeAll()
         targetNodes.forEach { $0.alpha = 1 }
@@ -523,6 +526,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         // The shooter is a deterministic animation. SpriteKit's side-wall
         // collision at launch was producing inconsistent ball trajectories.
         shooterDuration = 1.05 - plungerCharge * 0.30
+        launchVariation = CGFloat.random(in: -28...28)
         ballVelocity = .zero
         plungerCharging = false
         plungerCharge = 0
@@ -708,7 +712,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                 travelingShooterLane = false
                 ballInShooter = false
                 ball.position = CGPoint(x: 316, y: 603)
-                ballVelocity = CGVector(dx: -48, dy: -50)
+                ballVelocity = CGVector(dx: -48 + launchVariation, dy: -50)
                 statusLabel.text = "PLAY BALL"
             }
             return
@@ -857,9 +861,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             }
         }
         // Swept contact catches a falling ball between fixed steps.
-        if (p.y < 190 || previous.y < 190) && p.y > 68 {
-            if p.x > 104 && p.x < 198 { collideFlipper(&p, previous: previous, left: true) }
-            if p.x > 201 && p.x < 295 { collideFlipper(&p, previous: previous, left: false) }
+        if min(p.y, previous.y) < 197 && max(p.y, previous.y) > 75 {
+            if min(p.x,previous.x) < 204 && max(p.x,previous.x) > 106 { collideFlipper(&p, previous: previous, left: true) }
+            if min(p.x,previous.x) < 293 && max(p.x,previous.x) > 195 { collideFlipper(&p, previous: previous, left: false) }
         }
         lastBallPoint = p
         ball.position = p
