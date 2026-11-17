@@ -283,9 +283,12 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let shape = SKShapeNode(path: path)
         shape.position = position
         shape.zRotation = left ? -0.23 : 0.23
-        shape.fillColor = SKColor(red: 0.79, green: 0.16, blue: 0.13, alpha: 1)
-        shape.strokeColor = SKColor(red: 1, green: 0.78, blue: 0.42, alpha: 1)
-        shape.lineWidth = 2.5
+        shape.fillColor = .clear
+        shape.strokeColor = .clear
+        shape.lineWidth = 0
+        let armor = SiegeMechanicalArt.sprite(.flipper, size: CGSize(width: 82, height: 25), mirrored: !left)
+        armor.position = CGPoint(x: sign * 35, y: 0)
+        shape.addChild(armor)
         // No physics body: the manual flipper solver uses the same endpoints.
         playfield.addChild(shape)
 
@@ -295,12 +298,14 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let rubber = SKShapeNode(path: rubberPath)
         rubber.strokeColor = SKColor(red: 1, green: 0.76, blue: 0.48, alpha: 1)
         rubber.lineWidth = 4
+        rubber.isHidden = true
         shape.addChild(rubber)
 
         let pivot = SKShapeNode(circleOfRadius: 6)
         pivot.fillColor = .darkGray
         pivot.strokeColor = .white
         pivot.lineWidth = 1.3
+        pivot.isHidden = true
         shape.addChild(pivot)
         return shape
     }
@@ -334,9 +339,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             post.strokeColor = .white
             post.lineWidth = 1.5
             playfield.addChild(post)
+            post.fillColor = .clear
+            post.strokeColor = .clear
+            post.addChild(SiegeMechanicalArt.sprite(.post, size: CGSize(width: 14, height: 14)))
             let screw = SKShapeNode(circleOfRadius: 1.8)
             screw.fillColor = .black
             screw.strokeColor = .clear
+            screw.isHidden = true
             post.addChild(screw)
         }
         for (x,y) in [(94.0, 248.0), (289, 248)] {
@@ -425,6 +434,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         travelingShooterLane = false
         shooterElapsed = 0
         trappedSeconds = 0
+        lowerTrapTime = 0
         bonus = 0
         multiplier = 1
         lastLeftKick = -10
@@ -463,6 +473,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         travelingShooterLane = false
         shooterElapsed = 0
         trappedSeconds = 0
+        lowerTrapTime = 0
         lastBallPoint = node.position
         tilted = false
         refreshHUD()
