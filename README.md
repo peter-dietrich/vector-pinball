@@ -2,6 +2,18 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
+## v0.5.3 — Swept flipper collisions and natural trajectories
+
+- Raised flippers detect the swept ball path, including collisions between physics steps.
+- Variable shooter exit angle and small impact variations make trajectories less repetitive without uncontrolled impulses.
+- Lower outlanes now permit drainage, correcting a repeating left-side collision pattern.
+- Slingshots and targets only kick on incoming collisions instead of repeated overlap.
+- No automatic ball rescue or unpowered flipper energy. The ball can drain naturally.
+- Table art, gameplay speed, center gap and Git-only assets preserved.
+- [Mac playtest checklist](docs/V0_5_3_SWEPT_COLLISION_QA.md).
+
+**Verification:** GitHub code committed. Mac compilation and gameplay still require user testing.
+
 ## v0.5.2 — Player control and drain fix
 
 - Resting flipper tip gap: 18.69 table units, about **117% of the 16-unit ball diameter** (designer requested approximately 115%).
