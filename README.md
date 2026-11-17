@@ -2,6 +2,17 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
+## v0.5.0 — Armored Vector Siege table
+
+- Procedurally rendered, original high-detail mechanical components in `Sources/VectorSiegeMechanicalArt.swift`; all design data and rendering code live in Git.
+- Sentry-style target banks, luminous reactor bumpers, armored shield slingshots, metal-and-neon tapered flippers, mechanical mounting posts, and indicator inserts.
+- A stronger powered flipper rebound and controlled passive bounce, revised contact separation, low-speed pocket rescue, and active slingshot kicks.
+- Existing table background `Resources/VectorSiege_Pinball_Background.png` remains bundled in Xcode.
+- No changes to the user's installed per-player score/preferences.
+- Test instructions: [v0.5.0 acceptance checklist](docs/V0_5_0_ACCEPTANCE.md).
+
+**Verification:** GitHub source and Xcode project references checked. Build and gameplay are not yet verified on Mac.
+
 ## v0.4.1 — all source and assets in Git
 
 **Git is the only source of truth for game code, table artwork, sound, rules and Xcode resources.** No user-local artwork importer or Application Support art dependency remains.
