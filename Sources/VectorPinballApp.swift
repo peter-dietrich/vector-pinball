@@ -231,15 +231,16 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         leftFlipper = makeFlipper(at: CGPoint(x: 139, y: 121), left: true)
         rightFlipper = makeFlipper(at: CGPoint(x: 260, y: 121), left: false)
         label("LAUNCH", at: CGPoint(x: 362, y: 48), size: 8, color: .systemOrange)
+        buildMechanicalArt()
     }
 
     private func makeFlipper(at position: CGPoint, left: Bool) -> SKShapeNode {
         let length: CGFloat = 78
         let shape = SKShapeNode(rectOf: CGSize(width: length, height: 16), cornerRadius: 8)
         shape.position = position
-        shape.fillColor = .init(red: 0.96, green: 0.70, blue: 0.30, alpha: 1)
-        shape.strokeColor = .white
-        shape.lineWidth = 1.5
+        shape.fillColor = .init(red: 0.79, green: 0.16, blue: 0.13, alpha: 1)
+        shape.strokeColor = .init(red: 1, green: 0.8, blue: 0.42, alpha: 1)
+        shape.lineWidth = 2.5
         shape.zRotation = left ? -0.30 : 0.30
         shape.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: length, height: 16))
         shape.physicsBody?.isDynamic = false
@@ -247,7 +248,65 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         shape.physicsBody?.restitution = 0.65
         shape.physicsBody?.friction = 0.2
         playfield.addChild(shape)
+        let rubber = SKShapeNode(rectOf: CGSize(width: 65, height: 6), cornerRadius: 3)
+        rubber.fillColor = .init(red: 1, green: 0.71, blue: 0.38, alpha: 1)
+        rubber.strokeColor = .clear
+        rubber.position.y = 3
+        shape.addChild(rubber)
+        let pin = SKShapeNode(circleOfRadius: 5)
+        pin.fillColor = .darkGray
+        pin.strokeColor = .white
+        pin.lineWidth = 1
+        pin.position.x = left ? -33 : 33
+        shape.addChild(pin)
         return shape
+    }
+
+    private func buildMechanicalArt() {
+        let gold = SKColor(red: 1, green: 0.77, blue: 0.43, alpha: 1)
+        let blue = SKColor(red: 0.22, green: 0.78, blue: 0.84, alpha: 1)
+        for (index, p) in [
+            CGPoint(x: 86, y: 492), CGPoint(x: 307, y: 492),
+            CGPoint(x: 86, y: 388), CGPoint(x: 305, y: 388),
+            CGPoint(x: 115, y: 282), CGPoint(x: 276, y: 282),
+            CGPoint(x: 147, y: 362), CGPoint(x: 246, y: 362)
+        ].enumerated() {
+            let lamp = SKShapeNode(circleOfRadius: 9)
+            lamp.position = p
+            lamp.fillColor = (index % 2 == 0 ? gold : blue).withAlphaComponent(0.48)
+            lamp.strokeColor = gold.withAlphaComponent(0.8)
+            lamp.lineWidth = 2
+            lamp.glowWidth = 2
+            playfield.addChild(lamp)
+        }
+        for p in [
+            CGPoint(x: 77, y: 550), CGPoint(x: 316, y: 550),
+            CGPoint(x: 82, y: 307), CGPoint(x: 309, y: 307),
+            CGPoint(x: 90, y: 168), CGPoint(x: 306, y: 168),
+            CGPoint(x: 95, y: 248), CGPoint(x: 290, y: 248)
+        ] {
+            let post = SKShapeNode(circleOfRadius: 5)
+            post.position = p
+            post.fillColor = .darkGray
+            post.strokeColor = .white
+            post.lineWidth = 1.5
+            playfield.addChild(post)
+            let screw = SKShapeNode(circleOfRadius: 1.8)
+            screw.fillColor = .black
+            screw.strokeColor = .clear
+            post.addChild(screw)
+        }
+        for (x,y) in [(94.0, 248.0), (289, 248)] {
+            let plastic = SKShapeNode(rectOf: CGSize(width: 42, height: 9), cornerRadius: 4)
+            plastic.position = CGPoint(x: x, y: y)
+            plastic.fillColor = SKColor(red: 0.9, green: 0.29, blue: 0.25, alpha: 0.6)
+            plastic.strokeColor = gold
+            plastic.lineWidth = 1
+            playfield.addChild(plastic)
+        }
+        label("FUN CITY", at: CGPoint(x: 197, y: 365), size: 13, color: gold)
+        label("SPECIAL WHEN LIT", at: CGPoint(x: 197, y: 352), size: 7, color: blue)
+        label("1 9 8 2", at: CGPoint(x: 197, y: 184), size: 12, color: gold)
     }
 
     private func buildHUD() {
@@ -495,6 +554,21 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         if let body = ball.physicsBody {
             let speed = hypot(body.velocity.dx, body.velocity.dy)
+            let p = ball.position
+            // The original lower-right geometry created a stable dead-ball pocket.
+            // Rescue after genuinely stationary movement, not during an active shot.
+            let trapped = p.x > 280 && p.x < 345 && p.y > 130 && p.y < 245
+            if trapped && speed < 30 && hypot(p.x - lastBallPoint.x, p.y - lastBallPoint.y) < 2 {
+                trappedSeconds += dt
+                if trappedSeconds > 1 {
+                    body.applyImpulse(CGVector(dx: -10, dy: 18))
+                    trappedSeconds = 0
+                    statusLabel.text = "BALL RESCUE"
+                }
+            } else {
+                trappedSeconds = 0
+            }
+            lastBallPoint = p
             if speed > 1550 {
                 let factor = 1550/speed
                 body.velocity = CGVector(dx: body.velocity.dx * factor, dy: body.velocity.dy * factor)
