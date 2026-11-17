@@ -1,6 +1,7 @@
 import AppKit
 import SpriteKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 @main
 struct VectorPinballApp: App {
@@ -83,7 +84,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var ballInShooter = true
     private var bumperNodes = [SKShapeNode]()
     private var backgroundArt: SKSpriteNode?
-    private let artStorageName = "vector_siege_playfield.jpg"
+    private let artStorageName = "vector_siege_playfield.png"
     private var previousFlipperL = false
     private var previousFlipperR = false
     private var trappedSeconds: TimeInterval = 0
@@ -388,8 +389,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let width: CGFloat = 346
         let height: CGFloat = 630
         let aspect = imageSize.width / max(imageSize.height, 1)
-        let fittedHeight = min(height, width / max(aspect, 0.01))
-        art.size = CGSize(width: fittedHeight * aspect, height: fittedHeight)
+        // Aspect-fill: the supplied portrait art covers the table, no black bars.
+        let filledHeight = max(height, width / max(aspect, 0.01))
+        art.size = CGSize(width: filledHeight * aspect, height: filledHeight)
         art.position = CGPoint(x: 210, y: 355)
         art.zPosition = -2
         art.alpha = 0.92
