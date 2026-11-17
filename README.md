@@ -1,24 +1,60 @@
-# Vector Pinball — Fun City Arcade
+# Vector Pinball 2.0 — Fun City Arcade
 
-## Clean-room restart
+**Status:** New Unity physics laboratory source committed. **Not yet build-verified or gameplay-accepted.**
 
-The previous SpriteKit prototype was retired on November 17, 2026.
+## Foundation
 
-This `main` branch has been cleared for a new high-fidelity macOS pinball game built around a tested, purpose-designed physics foundation and premium 3D graphics.
+- Unity 6.3 LTS **6000.3.28f1**, pinned in `ProjectSettings/ProjectVersion.txt`.
+- macOS standalone application target.
+- A real Rigidbody steel ball, motor-driven HingeJoint flippers, distinct collision materials, and a 120 Hz physics timestep.
+- Reproducible lab-scene generator in `Assets/Editor/PhysicsLabSceneBuilder.cs`.
+- EditMode unit tests for fundamental dimensions and gap geometry.
+- All authored code and configuration tracked in Git. No SpriteKit physics reused.
 
-The previous implementation—including the Vector Siege table artwork, project files, and commit history—remains available in the archive branch:
+## Mac setup
 
-`archive/pre-unity-restart-2026-11-17`
+Install Unity Hub and Unity Editor **6000.3.28f1**. Open the existing repository using Unity Hub's **Add project from disk** option.
 
-## New development rules
+```bash
+cd ~/Documents/GitHub/vector-pinball
+git switch main
+git pull --ff-only origin main
+```
 
-- The new pinball project starts from scratch. Do not carry over the previous SpriteKit physics, collision patches, or rendering architecture.
-- Keep all source code, artwork, 3D models, audio, shaders, resources, build scripts, and tests in Git, using Git LFS for large binary assets when appropriate.
-- First verify the macOS engine and build tooling; then build and test the ball/flipper physics laboratory before table art.
-- The first game table will be Vector Siege, followed by Vector Barrage and Vector Drift.
-- The game should remain independently buildable before integration into Fun City Arcade.
-- Every version needs a visible identifier and documented build/test status.
+In Unity, choose **Fun City → Pinball → Build Physics Lab Scene**. Then press **Play**.
 
-## Status
+Controls: **Return** reset; **Space** launch; **A / Left Shift** left flipper; **D / Right Shift** right flipper.
 
-Repository reset complete. No new Unity application or physics engine is implemented yet.
+For a native Mac test application choose **Fun City → Pinball → Build macOS Physics Lab**.
+
+Run geometry tests using **Window → General → Test Runner → EditMode → Run All**.
+
+## Important Git workflow
+
+The scene generator creates `Assets/Scenes/PhysicsLab.unity` and `Assets/PhysicsMaterials/` in the Unity Editor. These generated files and their Unity `.meta` files **must be checked into Git** after the first successful generation. Until that happens, the repository contains the canonical generator source, but not a pre-generated runnable scene.
+
+Unity-generated `Library/`, `Temp/`, and `Builds/` remain excluded from Git.
+
+## Physics acceptance gate
+
+Before themed table art:
+- Confirm motorized flippers rotate and reliably return when released.
+- Confirm steel ball rolling, collisions, spin, and material restitution.
+- Confirm ball cannot tunnel through raised flipper at tested gameplay velocities.
+- Confirm an unattended ball can drain naturally through the measured resting gap, approximately 1.15 times the ball diameter.
+- Verify ball, rubber, rails, and bumpers through repeatable tests and diagnostics.
+- Run 100 unattended gameplay trials with no persistent contact loops.
+
+**These tests have not yet been executed.** The initial Unity scripts still require a macOS compilation and manual playtesting.
+
+## Roadmap
+
+1. Physics laboratory verification and collision tests.
+2. Complete playable mechanical table.
+3. Premium 3D Vector Siege table.
+4. Vector Barrage and Vector Drift themed tables.
+5. Fun City Arcade installation and update integration.
+
+## Archived prototype
+
+Old SpriteKit code and images remain on `archive/pre-unity-restart-2026-11-17`.
