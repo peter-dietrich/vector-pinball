@@ -112,6 +112,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var recoveryCount = 0
     private var stalledFrameTime: TimeInterval = 0
     private var progressSample = CGPoint.zero
+    private var orbitAnchor = CGPoint.zero
+    private var orbitTime: TimeInterval = 0
     private var inputReleaseTime: TimeInterval = 0
     private var leftKeyHeld = false
     private var rightKeyHeld = false
@@ -506,6 +508,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         lowerTrapTime = 0
         lastBallPoint = node.position
         progressSample = node.position
+        orbitAnchor = node.position
+        orbitTime = 0
         stalledFrameTime = 0
         tilted = false
         refreshHUD()
@@ -735,6 +739,19 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                 recoverBall(manual: false)
                 stalledFrameTime = 0
                 progressSample = ball.position
+            }
+        }
+        // A moving ball can still be stuck in a small orbit. If it fails to
+        // escape a 70-point radius for 3.5 seconds, free it.
+        if hypot(p.x-orbitAnchor.x, p.y-orbitAnchor.y) > 70 {
+            orbitAnchor = p
+            orbitTime = 0
+        } else {
+            orbitTime += dt
+            if orbitTime > 3.5 && !travelingShooterLane {
+                recoverBall(manual: false)
+                orbitAnchor = ball.position
+                orbitTime = 0
             }
         }
         trailTick += dt
@@ -977,6 +994,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             ballVelocity = CGVector(dx: outward, dy: 215)
         }
         progressSample = ball.position
+        orbitAnchor = ball.position
+        orbitTime = 0
         stalledFrameTime = 0
         statusLabel.text = manual ? "BALL RESET" : "AUTO BALL RESCUE"
     }
