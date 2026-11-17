@@ -827,8 +827,19 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         for (i, target) in targetNodes.enumerated() {
             let q = target.position
             if abs(p.x - q.x) < 19 && abs(p.y - q.y) < 24 {
-                if p.y < q.y { p.y = q.y-24; ballVelocity.dy = -max(145, abs(ballVelocity.dy) * 0.86) }
-                else { p.y = q.y+24; ballVelocity.dy = max(145, abs(ballVelocity.dy) * 0.86) }
+                // Only rebound when entering the target, not while exiting
+                // an overlapping rectangle (which previously formed loops).
+                let below = previous.y < q.y
+                if below && ballVelocity.dy > 0 {
+                    p.y = q.y - 25
+                    ballVelocity.dy = -max(135, abs(ballVelocity.dy)*0.78)
+                } else if !below && ballVelocity.dy < 0 {
+                    p.y = q.y + 25
+                    ballVelocity.dy = max(135, abs(ballVelocity.dy)*0.78)
+                } else {
+                    continue
+                }
+                ballVelocity.dx += CGFloat.random(in: -18...18)
                 let key = "target_\(i)"
                 if simTime - (lastContactTime[key] ?? -100) > 0.25 {
                     lastContactTime[key] = simTime
