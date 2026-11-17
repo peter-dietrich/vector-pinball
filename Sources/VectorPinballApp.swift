@@ -711,17 +711,24 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             let q = bumper.position
             let d = hypot(p.x-q.x, p.y-q.y)
             if d < 33 {
-                let nx = (p.x-q.x) / max(d, 0.1)
-                let ny = (p.y-q.y) / max(d, 0.1)
-                p = CGPoint(x: q.x + nx*33, y: q.y + ny*33)
-                reflect(nx: nx, ny: ny, restitution: 0.82)
+                let nx: CGFloat = d > 0.01 ? (p.x-q.x)/d : 0
+                let ny: CGFloat = d > 0.01 ? (p.y-q.y)/d : 1
+                p = CGPoint(x: q.x + nx*33.5, y: q.y + ny*33.5)
+                let toward = ballVelocity.dx*nx + ballVelocity.dy*ny
                 let key = "bumper_\(i)"
-                if simTime - (lastContactTime[key] ?? -100) > 0.22 {
-                    lastContactTime[key] = simTime
-                    addScore(100)
-                    bonus += 25
-                    impactFlash(at: q, points: 100)
-                    bumper.run(.sequence([.scale(to: 1.10, duration: 0.06), .scale(to: 1, duration: 0.14)]))
+                if toward < 0 {
+                    reflect(nx: nx, ny: ny, restitution: 0.98)
+                    if simTime - (lastContactTime[key] ?? -100) > 0.16 {
+                        let along = ballVelocity.dx*nx + ballVelocity.dy*ny
+                        let extra = max(0, 300 - along)
+                        ballVelocity.dx += nx*extra
+                        ballVelocity.dy += ny*extra
+                        lastContactTime[key] = simTime
+                        addScore(100)
+                        bonus += 25
+                        impactFlash(at: q, points: 100)
+                        bumper.run(.sequence([.scale(to: 1.16, duration: 0.05), .scale(to: 1, duration: 0.14)]))
+                    }
                 }
             }
         }
