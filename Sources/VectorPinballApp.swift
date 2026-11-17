@@ -917,10 +917,11 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let distance = hypot(p.x-closest.x, p.y-closest.y)
         let crossed = ballVelocity.dy < 0 && previous.y >= surface-5 && p.y <= surface+5
         let touching = distance < radius+3 && p.y > closest.y-4
-        guard crossed || touching else { return }
+        // No second rebound while the ball is already moving away.
+        guard ballVelocity.dy < -5, crossed || touching else { return }
         // Separate exactly once above the bat. A falling ball cannot be left
         // buried in the bat where it would collide repeatedly each frame.
-        p.y = surface + 2
+        p.y = surface + radius*0.35 + 2
         let lastHit = left ? lastLeftKick : lastRightKick
         if active && !tilted && simTime - lastHit > 0.10 {
             let incoming = max(0, -ballVelocity.dy)
