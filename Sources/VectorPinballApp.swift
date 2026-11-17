@@ -156,13 +156,6 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         frame.lineWidth = 6
         frame.zPosition = -3
         playfield.addChild(frame)
-        // Printed starburst rings evoke silkscreened early-eighties playfields.
-        let artwork = SKShapeNode(ellipseOf: CGSize(width: 290, height: 330))
-        artwork.position = CGPoint(x: 197, y: 421)
-        artwork.strokeColor = SKColor(red: 0.95, green: 0.46, blue: 0.28, alpha: 0.36)
-        artwork.lineWidth = 2
-        artwork.fillColor = .clear
-        playfield.addChild(artwork)
 
         wall([CGPoint(x: 45, y: 115), CGPoint(x: 45, y: 605), CGPoint(x: 70, y: 663), CGPoint(x: 210, y: 682),
               CGPoint(x: 345, y: 663), CGPoint(x: 373, y: 605), CGPoint(x: 373, y: 72)])
@@ -241,8 +234,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             playfield.addChild(light)
             laneNodes.append(light)
         }
-        label("BONUS LANES", at: CGPoint(x: 197, y: 306), size: 12, color: .init(red: 0.96, green: 0.72, blue: 0.41, alpha: 1))
-        label("COMPLETE TARGET BANK FOR X2", at: CGPoint(x: 197, y: 514), size: 9, color: .systemYellow)
+        label("DEFENSE GRID", at: CGPoint(x: 197, y: 306), size: 11, color: .systemGreen)
+        label("SENTRY BANK • SHIELD MULTIPLIER", at: CGPoint(x: 197, y: 514), size: 8, color: .systemGreen)
         for (x, mirror) in [(105.0, false), (268.0, true)] {
             let path = CGMutablePath()
             path.move(to: CGPoint(x: x - 23, y: 239))
@@ -852,29 +845,29 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let tip = CGPoint(x: pivot.x + dir*length*cos(angle),
                           y: pivot.y + dir*length*sin(angle))
         let dx = tip.x-pivot.x, dy = tip.y-pivot.y
-        let t = max(0, min(1, ((p.x-pivot.x)*dx + (p.y-pivot.y)*dy)/(dx*dx+dy*dy)))
+        let rawT = ((p.x-pivot.x)*dx + (p.y-pivot.y)*dy)/(dx*dx+dy*dy)
+        guard rawT > -0.18 && rawT < 1.18 else { return }
+        let t = max(0, min(1, rawT))
         let closest = CGPoint(x: pivot.x+dx*t, y: pivot.y+dy*t)
+        let radius: CGFloat = 17 - 2.5*t
+        let surface = closest.y + radius
         let distance = hypot(p.x-closest.x, p.y-closest.y)
-        let radius: CGFloat = 16.5 - 3*t
-        let contactY = closest.y + radius
-        let crossed = ballVelocity.dy < 0 && previous.y >= contactY-3 && p.y <= contactY+3
-        let overlapping = distance <= radius+2 && p.y >= closest.y-10 && p.y <= contactY+5
-        guard crossed || overlapping else { return }
-        p.y = max(p.y, contactY+0.5)
-        if active && !tilted {
-            let lastHit = left ? lastLeftKick : lastRightKick
-            if ballVelocity.dy < 60 && simTime-lastHit > 0.10 {
-                let incoming = max(0, -ballVelocity.dy)
-                let upward = min(445, 345 + incoming*0.35 + 40*t)
-                ballVelocity = CGVector(dx: dir*(43+65*t), dy: upward)
-                if left { lastLeftKick = simTime } else { lastRightKick = simTime }
-                flipperImpact(at: p)
-            } else if ballVelocity.dy < 0 {
-                ballVelocity.dy = max(125, abs(ballVelocity.dy)*0.65)
-            }
+        let crossed = ballVelocity.dy < 0 && previous.y >= surface-5 && p.y <= surface+5
+        let touching = distance < radius+3 && p.y > closest.y-4
+        guard crossed || touching else { return }
+        // Separate exactly once above the bat. A falling ball cannot be left
+        // buried in the bat where it would collide repeatedly each frame.
+        p.y = surface + 2
+        let lastHit = left ? lastLeftKick : lastRightKick
+        if active && !tilted && simTime - lastHit > 0.10 {
+            let incoming = max(0, -ballVelocity.dy)
+            ballVelocity = CGVector(dx: dir*(48+70*t),
+                                    dy: min(450, 330+incoming*0.42+55*t))
+            if left { lastLeftKick = simTime } else { lastRightKick = simTime }
+            flipperImpact(at: p)
         } else if ballVelocity.dy < 0 {
-            ballVelocity = CGVector(dx: ballVelocity.dx*0.75 + dir*22,
-                                    dy: max(80, abs(ballVelocity.dy)*0.58))
+            ballVelocity.dx = ballVelocity.dx*0.75 + dir*28
+            ballVelocity.dy = max(115, abs(ballVelocity.dy)*0.67)
         }
     }
     private func flipperImpact(at point: CGPoint) {
