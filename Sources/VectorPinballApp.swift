@@ -696,10 +696,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             ballVelocity.dy = -abs(ballVelocity.dy) * 0.67
         }
         // Inlane guides: deflect toward the center, never create flat pockets.
-        collideSegment(&p, CGPoint(x: 55, y: 234), CGPoint(x: 128, y: 130), restitution: 0.58)
-        collideSegment(&p, CGPoint(x: 334, y: 234), CGPoint(x: 271, y: 130), restitution: 0.58)
-        collideSegment(&p, CGPoint(x: 81, y: 248), CGPoint(x: 110, y: 350), restitution: 0.68)
-        collideSegment(&p, CGPoint(x: 313, y: 248), CGPoint(x: 283, y: 350), restitution: 0.68)
+        collideSegment(&p, CGPoint(x: 55, y: 234), CGPoint(x: 128, y: 130), restitution: 0.76)
+        collideSegment(&p, CGPoint(x: 334, y: 234), CGPoint(x: 271, y: 130), restitution: 0.76)
+        collideSegment(&p, CGPoint(x: 81, y: 248), CGPoint(x: 110, y: 350), restitution: 0.83)
+        collideSegment(&p, CGPoint(x: 313, y: 248), CGPoint(x: 283, y: 350), restitution: 0.83)
         // Slingshots are now physical collision surfaces, not just artwork.
         collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 121, y: 239), restitution: 0.94)
         collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 89, y: 190), restitution: 0.94)
@@ -735,8 +735,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         for (i, target) in targetNodes.enumerated() {
             let q = target.position
             if abs(p.x - q.x) < 19 && abs(p.y - q.y) < 24 {
-                if p.y < q.y { p.y = q.y-24; ballVelocity.dy = -abs(ballVelocity.dy) * 0.63 }
-                else { p.y = q.y+24; ballVelocity.dy = abs(ballVelocity.dy) * 0.63 }
+                if p.y < q.y { p.y = q.y-24; ballVelocity.dy = -max(145, abs(ballVelocity.dy) * 0.86) }
+                else { p.y = q.y+24; ballVelocity.dy = max(145, abs(ballVelocity.dy) * 0.86) }
                 let key = "target_\(i)"
                 if simTime - (lastContactTime[key] ?? -100) > 0.25 {
                     lastContactTime[key] = simTime
