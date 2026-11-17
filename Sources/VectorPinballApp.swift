@@ -77,11 +77,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "FLIPPER GEOMETRY FIX v0.3.3"
+    private let buildTag = "VECTOR SIEGE TABLE v0.4.0"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
     private var bumperNodes = [SKShapeNode]()
+    private var backgroundArt: SKSpriteNode?
+    private let artStorageName = "vector_siege_playfield.jpg"
     private var previousFlipperL = false
     private var previousFlipperR = false
     private var trappedSeconds: TimeInterval = 0
@@ -112,6 +114,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         physicsWorld.contactDelegate = self
         addChild(playfield)
         buildTable()
+        loadTableArt()
         buildHUD()
         showAttract()
     }
@@ -149,6 +152,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         frame.fillColor = SKColor(red: 0.09, green: 0.13, blue: 0.23, alpha: 1)
         frame.strokeColor = SKColor(red: 0.70, green: 0.53, blue: 0.30, alpha: 1)
         frame.lineWidth = 6
+        frame.zPosition = -3
         playfield.addChild(frame)
         // Printed starburst rings evoke silkscreened early-eighties playfields.
         let artwork = SKShapeNode(ellipseOf: CGSize(width: 290, height: 330))
@@ -171,8 +175,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         wall([CGPoint(x: 83, y: 120), CGPoint(x: 106, y: 105)])
         wall([CGPoint(x: 311, y: 120), CGPoint(x: 291, y: 105)])
 
-        label("CLASSIC '82", at: CGPoint(x: 197, y: 635), size: 22, color: .init(red: 1, green: 0.81, blue: 0.43, alpha: 1))
-        label("THE ORIGINAL ARCADE TABLE", at: CGPoint(x: 197, y: 614), size: 8, color: .init(red: 0.63, green: 0.83, blue: 0.90, alpha: 1))
+        label("VECTOR SIEGE", at: CGPoint(x: 197, y: 635), size: 18, color: .init(red: 0.61, green: 1, blue: 0.35, alpha: 1))
+        label("FUN CITY PINBALL • TABLE 01", at: CGPoint(x: 197, y: 614), size: 8, color: .init(red: 0.63, green: 1, blue: 0.82, alpha: 1))
         for i in 0..<5 {
             let target = SKShapeNode(rectOf: CGSize(width: 22, height: 31), cornerRadius: 3)
             target.position = CGPoint(x: 105 + 46*i, y: 569 - ((i % 2) * 13))
@@ -332,9 +336,65 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             plastic.lineWidth = 1
             playfield.addChild(plastic)
         }
-        label("FUN CITY", at: CGPoint(x: 197, y: 365), size: 13, color: gold)
+        label("VECTOR SIEGE", at: CGPoint(x: 197, y: 365), size: 12, color: .systemGreen)
         label("SPECIAL WHEN LIT", at: CGPoint(x: 197, y: 352), size: 7, color: blue)
-        label("1 9 8 2", at: CGPoint(x: 197, y: 184), size: 12, color: gold)
+        label("DEFEND THE GRID", at: CGPoint(x: 197, y: 184), size: 10, color: .systemGreen)
+    }
+
+    private func artFileURL() -> URL? {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                  in: .userDomainMask).first else { return nil }
+        return base.appendingPathComponent("VectorPinball", isDirectory: true)
+                   .appendingPathComponent(artStorageName)
+    }
+
+    private func chooseBackgroundArt() {
+        // Native desktop workflow: a one-time import stores the image locally.
+        // All mechanics remain separate SpriteKit nodes above this background.
+        let picker = NSOpenPanel()
+        picker.title = "Select Vector Siege pinball playfield artwork"
+        picker.message = "Select the provided Vector Siege playfield image."
+        picker.allowedContentTypes = [.png, .jpeg, .tiff]
+        picker.allowsMultipleSelection = false
+        picker.canChooseFiles = true
+        picker.canChooseDirectories = false
+        guard picker.runModal() == .OK, let source = picker.url,
+              let destination = artFileURL() else { return }
+        do {
+            try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(),
+                                                     withIntermediateDirectories: true)
+            if source.standardizedFileURL != destination.standardizedFileURL {
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.copyItem(at: source, to: destination)
+            }
+            loadTableArt()
+            statusLabel.text = "VECTOR SIEGE ART LOADED"
+        } catch {
+            statusLabel.text = "ART IMPORT FAILED: \(error.localizedDescription)"
+        }
+    }
+
+    private func loadTableArt() {
+        backgroundArt?.removeFromParent()
+        backgroundArt = nil
+        guard let url = artFileURL(),
+              let image = NSImage(contentsOf: url) else { return }
+        let art = SKSpriteNode(texture: SKTexture(image: image))
+        // This is a portrait 2:3 image; the visible playfield is ~350 x 620.
+        // Scale the artwork within the machine without warping its proportions.
+        let imageSize = image.size
+        let width: CGFloat = 346
+        let height: CGFloat = 630
+        let aspect = imageSize.width / max(imageSize.height, 1)
+        let fittedHeight = min(height, width / max(aspect, 0.01))
+        art.size = CGSize(width: fittedHeight * aspect, height: fittedHeight)
+        art.position = CGPoint(x: 210, y: 355)
+        art.zPosition = -2
+        art.alpha = 0.92
+        playfield.addChild(art)
+        backgroundArt = art
     }
 
     private func buildHUD() {
@@ -350,7 +410,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func showAttract() {
         statusLabel.text = "PRESS RETURN TO START"
-        subtitleLabel.text = "A / D FLIPPERS • SPACE PLUNGER • P PAUSE"
+        subtitleLabel.text = "A/D FLIPPERS • SPACE LAUNCH • B LOAD TABLE ART"
     }
 
     private func refreshHUD() {
@@ -447,6 +507,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if pressed, running { isPaused.toggle(); statusLabel.text = isPaused ? "PAUSED" : "PLAY BALL" }
         case 17:
             if pressed { showDebug.toggle(); debugLabel.isHidden = !showDebug }
+        case 11: // B selects and installs background artwork into Application Support.
+            if pressed { chooseBackgroundArt() }
         default: break
         }
     }
