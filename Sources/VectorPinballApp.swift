@@ -723,10 +723,16 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         collideSegment(&p, CGPoint(x: 81, y: 248), CGPoint(x: 110, y: 350), restitution: 0.83)
         collideSegment(&p, CGPoint(x: 313, y: 248), CGPoint(x: 283, y: 350), restitution: 0.83)
         // Slingshots are now physical collision surfaces, not just artwork.
-        collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 121, y: 239), restitution: 0.94)
-        collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 89, y: 190), restitution: 0.94)
-        collideSegment(&p, CGPoint(x: 245, y: 239), CGPoint(x: 291, y: 239), restitution: 0.94)
-        collideSegment(&p, CGPoint(x: 291, y: 239), CGPoint(x: 284, y: 190), restitution: 0.94)
+        let leftSling = collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 121, y: 239), restitution: 0.94)
+            || collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 89, y: 190), restitution: 0.94)
+        let rightSling = collideSegment(&p, CGPoint(x: 245, y: 239), CGPoint(x: 291, y: 239), restitution: 0.94)
+            || collideSegment(&p, CGPoint(x: 291, y: 239), CGPoint(x: 284, y: 190), restitution: 0.94)
+        if (leftSling || rightSling) && simTime - lastSlingshot > 0.16 {
+            lastSlingshot = simTime
+            ballVelocity.dx += leftSling ? 125 : -125
+            ballVelocity.dy = max(ballVelocity.dy, 175)
+            flipperImpact(at: p)
+        }
 
         // Solid rubber bumpers and target banks use real overlap tests.
         for (i, bumper) in bumperNodes.enumerated() {
@@ -795,6 +801,22 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if p.x > 100 && p.x < 215 { collideFlipper(&p, previous: previous, left: true) }
             if p.x > 183 && p.x < 299 { collideFlipper(&p, previous: previous, left: false) }
         }
+        // Stop long-lived ball/post/flipper overlap loops without disturbing
+        // normal slow rolls: only rescue in a tight lower playfield pocket.
+        let slow = hypot(ballVelocity.dx, ballVelocity.dy) < 43
+        let still = hypot(p.x - lastBallPoint.x, p.y - lastBallPoint.y) < 1.4
+        if p.x > 73 && p.x < 324 && p.y > 94 && p.y < 255 && slow && still {
+            lowerTrapTime += dt
+            if lowerTrapTime > 0.32 {
+                ballVelocity = CGVector(dx: p.x < 199 ? 80 : -80, dy: 220)
+                p.y += 2
+                lowerTrapTime = 0
+                statusLabel.text = "BALL FREED"
+            }
+        } else {
+            lowerTrapTime = 0
+        }
+        lastBallPoint = p
         ball.position = p
         bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
     }
@@ -807,17 +829,18 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
     }
 
-    private func collideSegment(_ p: inout CGPoint, _ a: CGPoint, _ b: CGPoint, restitution: CGFloat) {
+    @discardableResult private func collideSegment(_ p: inout CGPoint, _ a: CGPoint, _ b: CGPoint, restitution: CGFloat) -> Bool {
         let dx = b.x-a.x, dy = b.y-a.y
         let t = max(0, min(1, ((p.x-a.x)*dx+(p.y-a.y)*dy) / max(0.01, dx*dx+dy*dy)))
         let q = CGPoint(x: a.x+t*dx, y: a.y+t*dy)
         let distance = hypot(p.x-q.x, p.y-q.y)
-        guard distance < 9 else { return }
+        guard distance < 9 else { return false }
         let nx = (p.x-q.x) / max(0.01, distance)
         let ny = (p.y-q.y) / max(0.01, distance)
         p.x = q.x+nx*9
         p.y = q.y+ny*9
         reflect(nx: nx, ny: ny, restitution: restitution)
+        return true
     }
 
     private func collideFlipper(_ p: inout CGPoint, previous: CGPoint, left: Bool) {
