@@ -97,7 +97,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.025, green: 0.035, blue: 0.075, alpha: 1)
-        physicsWorld.gravity = CGVector(dx: 0, dy: -520)
+        physicsWorld.gravity = CGVector(dx: 0, dy: -265)
         physicsWorld.contactDelegate = self
         addChild(playfield)
         buildTable()
@@ -116,7 +116,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         shape.glowWidth = 1.5
         shape.physicsBody = SKPhysicsBody(edgeChainFrom: path)
         shape.physicsBody?.isDynamic = false
-        shape.physicsBody?.restitution = 0.70
+        shape.physicsBody?.restitution = 0.58
         shape.physicsBody?.friction = 0.1
         playfield.addChild(shape)
     }
@@ -173,7 +173,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             target.physicsBody?.isDynamic = false
             target.physicsBody?.categoryBitMask = Collision.target
             target.physicsBody?.contactTestBitMask = Collision.ball
-            target.physicsBody?.restitution = 0.9
+            target.physicsBody?.restitution = 0.65
             playfield.addChild(target)
             targetNodes.append(target)
         }
@@ -189,7 +189,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             bumper.physicsBody?.isDynamic = false
             bumper.physicsBody?.categoryBitMask = Collision.bumper
             bumper.physicsBody?.contactTestBitMask = Collision.ball
-            bumper.physicsBody?.restitution = 1.15
+            bumper.physicsBody?.restitution = 0.82
             playfield.addChild(bumper)
             let inset = SKShapeNode(circleOfRadius: 13)
             inset.fillColor = .init(red: 0.99, green: 0.71, blue: 0.29, alpha: 1)
@@ -231,7 +231,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             slingshot.lineWidth = 3
             slingshot.physicsBody = SKPhysicsBody(polygonFrom: path)
             slingshot.physicsBody?.isDynamic = false
-            slingshot.physicsBody?.restitution = 1.05
+            slingshot.physicsBody?.restitution = 0.8
             playfield.addChild(slingshot)
         }
         leftFlipper = makeFlipper(at: CGPoint(x: 139, y: 121), left: true)
@@ -251,7 +251,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         shape.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: length, height: 16))
         shape.physicsBody?.isDynamic = false
         shape.physicsBody?.categoryBitMask = Collision.flipper
-        shape.physicsBody?.restitution = 0.65
+        shape.physicsBody?.restitution = 0.4
         shape.physicsBody?.friction = 0.2
         playfield.addChild(shape)
         let rubber = SKShapeNode(rectOf: CGSize(width: 65, height: 6), cornerRadius: 3)
@@ -380,9 +380,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         node.position = CGPoint(x: 362, y: 105)
         let body = SKPhysicsBody(circleOfRadius: 8)
         body.affectedByGravity = false
-        body.restitution = 0.79
+        body.restitution = 0.66
         body.friction = 0.055
-        body.linearDamping = 0.12
+        body.linearDamping = 0.24
         body.angularDamping = 0.22
         body.mass = 0.075
         body.categoryBitMask = Collision.ball
@@ -408,7 +408,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         // Keep the ball centered in the dedicated shooter channel until it reaches
         // the upper feed. A leftward impulse here caused it to hit the lane divider.
         ball.physicsBody?.affectedByGravity = false
-        ball.physicsBody?.velocity = CGVector(dx: 0, dy: 770 + plungerCharge * 200)
+        ball.physicsBody?.velocity = CGVector(dx: 0, dy: 620 + plungerCharge * 90)
         plungerCharging = false
         plungerCharge = 0
         statusLabel.text = "BALL LAUNCHED"
@@ -444,8 +444,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let dx = ball.position.x - (node?.position.x ?? 0)
         let dy = ball.position.y - (node?.position.y ?? 0)
         if abs(dx) < 80 && dy > -10 && dy < 53 {
-            let vx = left ? 110.0 : -110.0
-            ball.physicsBody?.applyImpulse(CGVector(dx: vx * 0.075, dy: 36))
+            let vx = left ? 35.0 : -35.0
+            ball.physicsBody?.applyImpulse(CGVector(dx: vx * 0.075, dy: 14))
             lastFlipperKick = simTime
         }
     }
@@ -455,9 +455,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         nudges += 1
         let impulse: CGVector
         switch direction {
-        case 123: impulse = CGVector(dx: -5, dy: 2.5)
-        case 124: impulse = CGVector(dx: 5, dy: 2.5)
-        default: impulse = CGVector(dx: 0, dy: 7.5)
+        case 123: impulse = CGVector(dx: -1.8, dy: 1.2)
+        case 124: impulse = CGVector(dx: 1.8, dy: 1.2)
+        default: impulse = CGVector(dx: 0, dy: 3.2)
         }
         ball.physicsBody?.applyImpulse(impulse)
         if nudges == 4 {
@@ -501,7 +501,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             impactFlash(at: contact.contactPoint, points: 100)
             if let ball {
                 let dx = ball.position.x - contact.contactPoint.x
-                ball.physicsBody?.applyImpulse(CGVector(dx: dx * 0.12, dy: 8))
+                ball.physicsBody?.applyImpulse(CGVector(dx: max(-2, min(2, dx * 0.06)), dy: 3.0))
             }
         } else if bits & Collision.target != 0 {
             addScore(250)
@@ -568,14 +568,14 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                 travelingShooterLane = false
                 // Feed into the upper-right playfield, clear of both shooter
                 // divider and outside cabinet walls.
-                ball.position = CGPoint(x: 319, y: 609)
+                ball.position = CGPoint(x: 316, y: 609)
                 ball.physicsBody?.affectedByGravity = true
-                ball.physicsBody?.velocity = CGVector(dx: -145, dy: 130)
+                ball.physicsBody?.velocity = CGVector(dx: -65, dy: 90)
                 statusLabel.text = "PLAY BALL"
             } else if ball.position.y < 75 {
                 // Safety reset for an unexpected lane collision.
                 ball.position = CGPoint(x: 362, y: 105)
-                ball.physicsBody?.velocity = CGVector(dx: 0, dy: 800)
+                ball.physicsBody?.velocity = CGVector(dx: 0, dy: 650)
             }
         }
         if ball.position.y < 46 || ball.position.x < 25 || ball.position.x > 395 {
@@ -602,7 +602,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if trapped && speed < 30 && hypot(p.x - lastBallPoint.x, p.y - lastBallPoint.y) < 2 {
                 trappedSeconds += dt
                 if trappedSeconds > 1 {
-                    body.applyImpulse(CGVector(dx: -10, dy: 18))
+                    body.applyImpulse(CGVector(dx: -2.2, dy: 4.5))
                     trappedSeconds = 0
                     statusLabel.text = "BALL RESCUE"
                 }
@@ -610,8 +610,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                 trappedSeconds = 0
             }
             lastBallPoint = p
-            if speed > 1550 {
-                let factor = 1550/speed
+            if speed > 650 {
+                let factor = 650/speed
                 body.velocity = CGVector(dx: body.velocity.dx * factor, dy: body.velocity.dy * factor)
             }
             if showDebug {
