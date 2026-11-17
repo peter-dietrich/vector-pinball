@@ -9,11 +9,13 @@
   A10000000000000000000003 = {isa = PBXBuildFile; fileRef = A10000000000000000000001; };
   A10000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = image.png; path = VectorSiege_Pinball_Background.png; sourceTree = "<group>"; };
   A10000000000000000000005 = {isa = PBXBuildFile; fileRef = A10000000000000000000004; };
+  A10000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorSiegeMechanicalArt.swift; sourceTree = "<group>"; };
+  A10000000000000000000007 = {isa = PBXBuildFile; fileRef = A10000000000000000000006; };
   A20000000000000000000001 = {isa = PBXGroup; children = (A20000000000000000000002, A20000000000000000000004, A20000000000000000000003); sourceTree = "<group>"; };
-  A20000000000000000000002 = {isa = PBXGroup; path = Sources; sourceTree = "<group>"; children = (A10000000000000000000001); };
+  A20000000000000000000002 = {isa = PBXGroup; path = Sources; sourceTree = "<group>"; children = (A10000000000000000000001, A10000000000000000000006); };
   A20000000000000000000004 = {isa = PBXGroup; path = Resources; sourceTree = "<group>"; children = (A10000000000000000000004); };
   A20000000000000000000003 = {isa = PBXGroup; name = Products; sourceTree = "<group>"; children = (A10000000000000000000002); };
-  A30000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003); runOnlyForDeploymentPostprocessing = 0; };
+  A30000000000000000000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003, A10000000000000000000007); runOnlyForDeploymentPostprocessing = 0; };
   A30000000000000000000002 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
   A30000000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005); runOnlyForDeploymentPostprocessing = 0; };
   A40000000000000000000001 = {isa = PBXNativeTarget; buildConfigurationList = A60000000000000000000002; buildPhases = (A30000000000000000000001, A30000000000000000000002, A30000000000000000000003); buildRules = (); dependencies = (); name = VectorPinball; productName = VectorPinball; productReference = A10000000000000000000002; productType = "com.apple.product-type.application"; };
