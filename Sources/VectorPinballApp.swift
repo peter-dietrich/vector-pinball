@@ -77,7 +77,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "NEW BALL ENGINE v0.3.1"
+    private let buildTag = "NEW BALL ENGINE v0.3.2"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -254,30 +254,39 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func makeFlipper(at position: CGPoint, left: Bool) -> SKShapeNode {
-        let length: CGFloat = 78
-        let shape = SKShapeNode(rectOf: CGSize(width: length, height: 16), cornerRadius: 8)
+        // Pivot-local, tapered original pinball bat: broad at the hinge,
+        // narrower and rounded at the inward-facing tip.
+        let sign: CGFloat = left ? 1 : -1
+        let length: CGFloat = 92 // was 78
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: -11))
+        path.addLine(to: CGPoint(x: sign * (length - 8), y: -6.5))
+        path.addQuadCurve(to: CGPoint(x: sign * (length - 8), y: 6.5),
+                          control: CGPoint(x: sign * (length + 4), y: 0))
+        path.addLine(to: CGPoint(x: 0, y: 11))
+        path.closeSubpath()
+        let shape = SKShapeNode(path: path)
         shape.position = position
-        shape.fillColor = .init(red: 0.79, green: 0.16, blue: 0.13, alpha: 1)
-        shape.strokeColor = .init(red: 1, green: 0.8, blue: 0.42, alpha: 1)
-        shape.lineWidth = 2.5
         shape.zRotation = left ? -0.30 : 0.30
-        shape.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: length, height: 16))
-        shape.physicsBody?.isDynamic = false
-        shape.physicsBody?.categoryBitMask = Collision.flipper
-        shape.physicsBody?.restitution = 0.4
-        shape.physicsBody?.friction = 0.2
+        shape.fillColor = SKColor(red: 0.79, green: 0.16, blue: 0.13, alpha: 1)
+        shape.strokeColor = SKColor(red: 1, green: 0.78, blue: 0.42, alpha: 1)
+        shape.lineWidth = 2.5
+        // No physics body: the manual flipper solver uses the same endpoints.
         playfield.addChild(shape)
-        let rubber = SKShapeNode(rectOf: CGSize(width: 65, height: 6), cornerRadius: 3)
-        rubber.fillColor = .init(red: 1, green: 0.71, blue: 0.38, alpha: 1)
-        rubber.strokeColor = .clear
-        rubber.position.y = 3
+
+        let rubberPath = CGMutablePath()
+        rubberPath.move(to: CGPoint(x: sign * 8, y: 5))
+        rubberPath.addLine(to: CGPoint(x: sign * (length - 12), y: 3))
+        let rubber = SKShapeNode(path: rubberPath)
+        rubber.strokeColor = SKColor(red: 1, green: 0.76, blue: 0.48, alpha: 1)
+        rubber.lineWidth = 4
         shape.addChild(rubber)
-        let pin = SKShapeNode(circleOfRadius: 5)
-        pin.fillColor = .darkGray
-        pin.strokeColor = .white
-        pin.lineWidth = 1
-        pin.position.x = left ? -33 : 33
-        shape.addChild(pin)
+
+        let pivot = SKShapeNode(circleOfRadius: 6)
+        pivot.fillColor = .darkGray
+        pivot.strokeColor = .white
+        pivot.lineWidth = 1.3
+        shape.addChild(pivot)
         return shape
     }
 
@@ -584,7 +593,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             return
         }
         if ballInShooter { return }
-        simulationRemainder += dt * 1.25 // 25% faster gameplay; fixed 120 Hz physics steps preserved
+        simulationRemainder += dt * 1.50 // Another 20% over v0.3.1 (1.25 × 1.20); fixed 120 Hz step
         let fixed = 1.0 / 120.0
         var loops = 0
         while simulationRemainder >= fixed && loops < 8 {
@@ -707,9 +716,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         // Left/right flippers return the ball only on actual contact with
         // their swept region, not whenever the ball enters a broad rectangle.
-        if p.y > 106 && p.y < 158 {
-            if p.x > 102 && p.x < 205 { collideFlipper(&p, left: true) }
-            if p.x > 194 && p.x < 296 { collideFlipper(&p, left: false) }
+        if p.y > 91 && p.y < 180 {
+            if p.x > 123 && p.x < 247 { collideFlipper(&p, left: true) }
+            if p.x > 152 && p.x < 277 { collideFlipper(&p, left: false) }
         }
         ball.position = p
         bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
@@ -738,19 +747,55 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func collideFlipper(_ p: inout CGPoint, left: Bool) {
         let active = left ? leftActive : rightActive
-        let pivot = CGPoint(x: left ? 139 : 260, y: 121)
-        let tip = CGPoint(x: left ? 190 : 209, y: active ? 144 : 105)
-        let ax = tip.x-pivot.x, ay = tip.y-pivot.y
-        let t = max(0, min(1, ((p.x-pivot.x)*ax+(p.y-pivot.y)*ay) / (ax*ax+ay*ay)))
-        let closest = CGPoint(x: pivot.x+ax*t, y: pivot.y+ay*t)
-        let dist = hypot(p.x-closest.x, p.y-closest.y)
-        guard dist < 16 else { return }
-        p.y = closest.y + 16
+        let pivot = CGPoint(x: left ? 139.0 : 260.0, y: 121.0)
+        let angle: CGFloat = left ? (active ? 0.38 : -0.30) : (active ? -0.38 : 0.30)
+        let dir: CGFloat = left ? 1 : -1
+        let length: CGFloat = 92
+        let tip = CGPoint(x: pivot.x + dir * length * cos(angle),
+                          y: pivot.y + dir * length * sin(angle))
+        let dx = tip.x - pivot.x, dy = tip.y - pivot.y
+        let t = max(0, min(1, ((p.x - pivot.x) * dx + (p.y - pivot.y) * dy)
+                             / (dx*dx + dy*dy)))
+        let closest = CGPoint(x: pivot.x + dx*t, y: pivot.y + dy*t)
+        let d = hypot(p.x - closest.x, p.y - closest.y)
+        let contactRadius: CGFloat = 16
+        guard d < contactRadius, p.y >= closest.y - 5 else { return }
+
+        // Keep the ball above the rubber and prevent repeated collisions
+        // against the same bat from adding momentum every fixed step.
+        p.y = max(p.y, closest.y + contactRadius)
         if active && !tilted {
-            ballVelocity = CGVector(dx: left ? 85 : -85, dy: 340 + 45*t)
+            let lastHit = left ? lastLeftKick : lastRightKick
+            if simTime - lastHit > 0.12 && ballVelocity.dy < 170 {
+                // A sharp motorized rebound; 235 pt/s² gravity makes the ball
+                // visibly decelerate during ascent. Contact near the tip
+                // produces more power and a more lateral shot.
+                let incoming = max(0, -ballVelocity.dy)
+                let upward = min(395, 275 + incoming * 0.34 + 45 * t)
+                ballVelocity = CGVector(dx: dir * (35 + 65 * t), dy: upward)
+                if left { lastLeftKick = simTime } else { lastRightKick = simTime }
+                flipperImpact(at: p)
+            } else if ballVelocity.dy < 0 {
+                ballVelocity.dy = abs(ballVelocity.dy) * 0.42
+            }
         } else if ballVelocity.dy < 0 {
-            ballVelocity = CGVector(dx: left ? 35 : -35, dy: abs(ballVelocity.dy) * 0.42)
+            ballVelocity = CGVector(dx: ballVelocity.dx * 0.8 + dir*18,
+                                    dy: abs(ballVelocity.dy) * 0.35)
         }
+    }
+
+    private func flipperImpact(at point: CGPoint) {
+        let flash = SKShapeNode(circleOfRadius: 9)
+        flash.position = point
+        flash.fillColor = SKColor(red: 1, green: 0.86, blue: 0.40, alpha: 0.55)
+        flash.strokeColor = .white
+        flash.lineWidth = 1.5
+        flash.zPosition = 30
+        playfield.addChild(flash)
+        flash.run(.sequence([
+            .group([.scale(to: 2.6, duration: 0.16), .fadeOut(withDuration: 0.16)]),
+            .removeFromParent()
+        ]))
     }
 
     private func drainBall() {
