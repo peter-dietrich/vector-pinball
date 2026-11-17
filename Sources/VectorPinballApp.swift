@@ -77,7 +77,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "PHYSICS RESET v0.2.2"
+    private let buildTag = "NEW BALL ENGINE v0.3.0"
+    private var ballVelocity = CGVector.zero
+    private var simulationRemainder = 0.0
+    private var ballInShooter = true
+    private var bumperNodes = [SKShapeNode]()
+    private var previousFlipperL = false
+    private var previousFlipperR = false
     private var trappedSeconds: TimeInterval = 0
     private var trailTick: TimeInterval = 0
     private var lastBallPoint = CGPoint.zero
@@ -196,6 +202,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             bumper.physicsBody?.contactTestBitMask = Collision.ball
             bumper.physicsBody?.restitution = 0.82
             playfield.addChild(bumper)
+            bumperNodes.append(bumper)
             let inset = SKShapeNode(circleOfRadius: 13)
             inset.fillColor = .init(red: 0.99, green: 0.71, blue: 0.29, alpha: 1)
             inset.strokeColor = .white
@@ -396,7 +403,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         body.collisionBitMask = UInt32.max
         body.contactTestBitMask = Collision.bumper | Collision.target | Collision.lane
         body.usesPreciseCollisionDetection = true
-        node.physicsBody = body
+        node.physicsBody = nil // Manual fixed-step ball solver owns motion and collisions.
+        ballVelocity = .zero
+        ballInShooter = true
+        simulationRemainder = 0
         node.zPosition = 10
         playfield.addChild(node)
         ball = node
@@ -417,9 +427,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         // The shooter is a deterministic animation. SpriteKit's side-wall
         // collision at launch was producing inconsistent ball trajectories.
         shooterDuration = 1.05 - plungerCharge * 0.30
-        ball.physicsBody?.velocity = .zero
-        ball.physicsBody?.affectedByGravity = false
-        ball.physicsBody?.isDynamic = false
+        ballVelocity = .zero
         plungerCharging = false
         plungerCharge = 0
         statusLabel.text = "SHOOTER LANE"
@@ -456,7 +464,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let dy = ball.position.y - (node?.position.y ?? 0)
         if abs(dx) < 80 && dy > -10 && dy < 53 {
             let vx = left ? 35.0 : -35.0
-            ball.physicsBody?.applyImpulse(CGVector(dx: vx * 0.075, dy: 14))
+            ballVelocity = CGVector(dx: vx, dy: max(270, ballVelocity.dy))
             lastFlipperKick = simTime
         }
     }
@@ -470,7 +478,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         case 124: impulse = CGVector(dx: 1.8, dy: 1.2)
         default: impulse = CGVector(dx: 0, dy: 3.2)
         }
-        ball.physicsBody?.applyImpulse(impulse)
+        ballVelocity.dx += impulse.dx * 7
+        ballVelocity.dy += impulse.dy * 7
         if nudges == 4 {
             tilted = true
             statusLabel.text = "TILT — NUDGE DISABLED"
@@ -512,7 +521,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             impactFlash(at: contact.contactPoint, points: 100)
             if let ball {
                 let dx = ball.position.x - contact.contactPoint.x
-                ball.physicsBody?.applyImpulse(CGVector(dx: max(-1, min(1, dx * 0.025)), dy: 1.5))
+                ballVelocity.dx += max(-16, min(16, dx * 0.12))
+                ballVelocity.dy += 45
             }
         } else if bits & Collision.target != 0 {
             addScore(250)
@@ -560,24 +570,19 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     }
 
     override func update(_ currentTime: TimeInterval) {
-        let dt = lastTime == 0 ? 0 : min(currentTime-lastTime, 1.0/20.0)
+        let dt = lastTime == 0 ? 0 : max(0, min(currentTime - lastTime, 0.045))
         lastTime = currentTime
         simTime += dt
+        guard !isPaused else { return }
         if plungerCharging && running {
-            plungerCharge = min(1, plungerCharge + dt/1.2)
-            if plungerCharge >= 1 {
-                // Automatic launch provides a reliable fallback if macOS does
-                // not deliver keyUp (e.g. focus or modifier-key interactions).
-                launchBall()
-            } else {
-                refreshHUD()
-            }
+            plungerCharge = min(1, plungerCharge + dt / 1.2)
+            if plungerCharge >= 1 { launchBall() }
+            else { refreshHUD() }
         }
         guard running, let ball, !awaitingServe else { return }
         if travelingShooterLane {
             shooterElapsed += dt
             let t = min(1, shooterElapsed / shooterDuration)
-            // Follow the shooter lane until the ball has cleared its top.
             if t < 0.72 {
                 ball.position = CGPoint(x: 362, y: 105 + 510 * (t / 0.72))
             } else {
@@ -586,66 +591,180 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             }
             if t >= 1 {
                 travelingShooterLane = false
+                ballInShooter = false
                 ball.position = CGPoint(x: 316, y: 603)
-                ball.physicsBody?.isDynamic = true
-                ball.physicsBody?.affectedByGravity = true
-                ball.physicsBody?.velocity = CGVector(dx: -45, dy: 15)
+                ballVelocity = CGVector(dx: -48, dy: -50)
                 statusLabel.text = "PLAY BALL"
             }
             return
         }
-        if ball.position.y < 46 || ball.position.x < 25 || ball.position.x > 395 {
+        if ballInShooter { return }
+        simulationRemainder += dt
+        let fixed = 1.0 / 120.0
+        var loops = 0
+        while simulationRemainder >= fixed && loops < 8 {
+            stepBall(fixed)
+            simulationRemainder -= fixed
+            loops += 1
+        }
+        if ball.position.y < 60 {
             drainBall()
             return
         }
-        if let body = ball.physicsBody {
-            let speed = hypot(body.velocity.dx, body.velocity.dy)
-            let p = ball.position
-            trailTick += dt
-            if speed > 160 && trailTick >= 0.055 && !travelingShooterLane {
-                trailTick = 0
-                let streak = SKShapeNode(circleOfRadius: 3)
-                streak.position = p
-                streak.fillColor = .white.withAlphaComponent(0.35)
-                streak.strokeColor = .clear
-                streak.zPosition = 3
-                playfield.addChild(streak)
-                streak.run(.sequence([.fadeOut(withDuration: 0.15), .removeFromParent()]))
-            }
-            // The original lower-right geometry created a stable dead-ball pocket.
-            // Rescue after genuinely stationary movement, not during an active shot.
-            let trapped = p.x > 280 && p.x < 345 && p.y > 130 && p.y < 245
-            if trapped && speed < 30 && hypot(p.x - lastBallPoint.x, p.y - lastBallPoint.y) < 2 {
-                trappedSeconds += dt
-                if trappedSeconds > 1 {
-                    body.applyImpulse(CGVector(dx: -1.4, dy: 2.8))
-                    trappedSeconds = 0
-                    statusLabel.text = "BALL RESCUE"
+        let p = ball.position
+        let speed = hypot(ballVelocity.dx, ballVelocity.dy)
+        trailTick += dt
+        if speed > 180 && trailTick > 0.08 {
+            trailTick = 0
+            let dot = SKShapeNode(circleOfRadius: 2.5)
+            dot.position = p
+            dot.fillColor = .white.withAlphaComponent(0.25)
+            dot.strokeColor = .clear
+            dot.zPosition = 3
+            playfield.addChild(dot)
+            dot.run(.sequence([.fadeOut(withDuration: 0.16), .removeFromParent()]))
+        }
+        if showDebug {
+            debugLabel.text = String(format: "X %.0f  Y %.0f  V %.0f  120Hz", p.x, p.y, speed)
+        }
+    }
+
+    // Own the ball simulation: no SpriteKit wall/ball solver, no invisible
+    // contact impulses, and no teleportation after the shooter has finished.
+    private func stepBall(_ dt: Double) {
+        guard let ball else { return }
+        ballVelocity.dy -= 235 * dt
+        let friction = pow(0.997, dt * 120)
+        ballVelocity.dx *= friction
+        ballVelocity.dy *= friction
+        let maxSpeed = 410.0
+        let speed = hypot(ballVelocity.dx, ballVelocity.dy)
+        if speed > maxSpeed {
+            ballVelocity.dx *= maxSpeed / speed
+            ballVelocity.dy *= maxSpeed / speed
+        }
+        var p = ball.position
+        p.x += ballVelocity.dx * dt
+        p.y += ballVelocity.dy * dt
+
+        // Outside rails (with ball radius). Bottom stays open for real drains.
+        if p.x < 55 && p.y > 110 {
+            p.x = 55
+            ballVelocity.dx = abs(ballVelocity.dx) * 0.72
+        } else if p.x > 334 && p.y > 110 {
+            p.x = 334
+            ballVelocity.dx = -abs(ballVelocity.dx) * 0.72
+        }
+        if p.y > 658 {
+            p.y = 658
+            ballVelocity.dy = -abs(ballVelocity.dy) * 0.67
+        }
+        // Inlane guides: deflect toward the center, never create flat pockets.
+        collideSegment(&p, CGPoint(x: 55, y: 234), CGPoint(x: 128, y: 130), restitution: 0.58)
+        collideSegment(&p, CGPoint(x: 334, y: 234), CGPoint(x: 271, y: 130), restitution: 0.58)
+        collideSegment(&p, CGPoint(x: 81, y: 248), CGPoint(x: 110, y: 350), restitution: 0.68)
+        collideSegment(&p, CGPoint(x: 313, y: 248), CGPoint(x: 283, y: 350), restitution: 0.68)
+
+        // Solid rubber bumpers and target banks use real overlap tests.
+        for (i, bumper) in bumperNodes.enumerated() {
+            let q = bumper.position
+            let d = hypot(p.x-q.x, p.y-q.y)
+            if d < 33 {
+                let nx = (p.x-q.x) / max(d, 0.1)
+                let ny = (p.y-q.y) / max(d, 0.1)
+                p = CGPoint(x: q.x + nx*33, y: q.y + ny*33)
+                reflect(nx: nx, ny: ny, restitution: 0.82)
+                let key = "bumper_\(i)"
+                if simTime - (lastContactTime[key] ?? -100) > 0.22 {
+                    lastContactTime[key] = simTime
+                    addScore(100)
+                    bonus += 25
+                    impactFlash(at: q, points: 100)
+                    bumper.run(.sequence([.scale(to: 1.10, duration: 0.06), .scale(to: 1, duration: 0.14)]))
                 }
-            } else {
-                trappedSeconds = 0
             }
-            lastBallPoint = p
-            // A held flipper must actively send a falling ball back up the table.
-            // Static SpriteKit collision bodies alone don't transfer motor torque.
-            if !tilted && p.y > 103 && p.y < 174 && body.velocity.dy < 95 {
-                if leftActive && p.x > 94 && p.x < 197 && simTime - lastLeftKick > 0.26 {
-                    body.velocity = CGVector(dx: 65, dy: 345)
-                    lastLeftKick = simTime
-                    
-                } else if rightActive && p.x > 201 && p.x < 307 && simTime - lastRightKick > 0.26 {
-                    body.velocity = CGVector(dx: -65, dy: 345)
-                    lastRightKick = simTime
-                    impactFlash(at: p, points: 0)
+        }
+        for (i, target) in targetNodes.enumerated() {
+            let q = target.position
+            if abs(p.x - q.x) < 19 && abs(p.y - q.y) < 24 {
+                if p.y < q.y { p.y = q.y-24; ballVelocity.dy = -abs(ballVelocity.dy) * 0.63 }
+                else { p.y = q.y+24; ballVelocity.dy = abs(ballVelocity.dy) * 0.63 }
+                let key = "target_\(i)"
+                if simTime - (lastContactTime[key] ?? -100) > 0.25 {
+                    lastContactTime[key] = simTime
+                    addScore(250)
+                    bonus += 100
+                    impactFlash(at: q, points: 250)
+                    if bankHits.insert(i).inserted {
+                        target.alpha = 0.4
+                        if bankHits.count == targetNodes.count {
+                            bankHits.removeAll()
+                            targetNodes.forEach { $0.alpha = 1 }
+                            multiplier = min(5, multiplier + 1)
+                            addScore(2000)
+                        }
+                    }
                 }
             }
-            if speed > 430 {
-                let factor = 430/speed
-                body.velocity = CGVector(dx: body.velocity.dx * factor, dy: body.velocity.dy * factor)
+        }
+        for (i, lane) in laneNodes.enumerated() {
+            let q = lane.position
+            if hypot(p.x-q.x, p.y-q.y) < 18 && laneHits.insert(i).inserted {
+                addScore(500)
+                bonus += 250
+                lane.alpha = 0.35
+                if laneHits.count == laneNodes.count {
+                    laneHits.removeAll()
+                    laneNodes.forEach { $0.alpha = 1 }
+                    addScore(2500)
+                }
             }
-            if showDebug {
-                debugLabel.text = String(format: "BALL (%.0f, %.0f)  V %.0f  NUDGE %d/4", ball.position.x, ball.position.y, speed, nudges)
-            }
+        }
+        // Left/right flippers return the ball only on actual contact with
+        // their swept region, not whenever the ball enters a broad rectangle.
+        if p.y > 106 && p.y < 158 {
+            if p.x > 102 && p.x < 205 { collideFlipper(&p, left: true) }
+            if p.x > 194 && p.x < 296 { collideFlipper(&p, left: false) }
+        }
+        ball.position = p
+        bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
+    }
+
+    private func reflect(nx: CGFloat, ny: CGFloat, restitution: CGFloat) {
+        let toward = ballVelocity.dx * nx + ballVelocity.dy * ny
+        if toward < 0 {
+            ballVelocity.dx -= (1 + restitution) * toward * nx
+            ballVelocity.dy -= (1 + restitution) * toward * ny
+        }
+    }
+
+    private func collideSegment(_ p: inout CGPoint, _ a: CGPoint, _ b: CGPoint, restitution: CGFloat) {
+        let dx = b.x-a.x, dy = b.y-a.y
+        let t = max(0, min(1, ((p.x-a.x)*dx+(p.y-a.y)*dy) / max(0.01, dx*dx+dy*dy)))
+        let q = CGPoint(x: a.x+t*dx, y: a.y+t*dy)
+        let distance = hypot(p.x-q.x, p.y-q.y)
+        guard distance < 9 else { return }
+        let nx = (p.x-q.x) / max(0.01, distance)
+        let ny = (p.y-q.y) / max(0.01, distance)
+        p.x = q.x+nx*9
+        p.y = q.y+ny*9
+        reflect(nx: nx, ny: ny, restitution: restitution)
+    }
+
+    private func collideFlipper(_ p: inout CGPoint, left: Bool) {
+        let active = left ? leftActive : rightActive
+        let pivot = CGPoint(x: left ? 139 : 260, y: 121)
+        let tip = CGPoint(x: left ? 190 : 209, y: active ? 144 : 105)
+        let ax = tip.x-pivot.x, ay = tip.y-pivot.y
+        let t = max(0, min(1, ((p.x-pivot.x)*ax+(p.y-pivot.y)*ay) / (ax*ax+ay*ay)))
+        let closest = CGPoint(x: pivot.x+ax*t, y: pivot.y+ay*t)
+        let dist = hypot(p.x-closest.x, p.y-closest.y)
+        guard dist < 16 else { return }
+        p.y = closest.y + 16
+        if active && !tilted {
+            ballVelocity = CGVector(dx: left ? 85 : -85, dy: 340 + 45*t)
+        } else if ballVelocity.dy < 0 {
+            ballVelocity = CGVector(dx: left ? 35 : -35, dy: abs(ballVelocity.dy) * 0.42)
         }
     }
 
