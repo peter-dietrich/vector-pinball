@@ -19,6 +19,13 @@ namespace FunCity.Pinball.Editor
             Physics.gravity = new Vector3(0, -9.81f, 0);
             Time.fixedDeltaTime = 1f / 120f;
 
+            var sun = new GameObject("Physics Lab Light");
+            sun.transform.rotation = Quaternion.Euler(35, -25, 0);
+            var light = sun.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.5f;
+            light.color = new Color(0.82f, 0.95f, 1f);
+
             var cameraObject = new GameObject("Physics Lab Camera");
             var camera = cameraObject.AddComponent<Camera>();
             camera.orthographic = true;
