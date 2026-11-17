@@ -768,11 +768,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                 }
             }
         }
-        // Left/right flippers return the ball only on actual contact with
-        // their swept region, not whenever the ball enters a broad rectangle.
-        if p.y > 91 && p.y < 174 {
-            if p.x > 108 && p.x < 202 { collideFlipper(&p, left: true) }
-            if p.x > 197 && p.x < 291 { collideFlipper(&p, left: false) }
+        // Swept contact catches a falling ball between fixed steps.
+        if (p.y < 190 || previous.y < 190) && p.y > 68 {
+            if p.x > 100 && p.x < 215 { collideFlipper(&p, previous: previous, left: true) }
+            if p.x > 183 && p.x < 299 { collideFlipper(&p, previous: previous, left: false) }
         }
         ball.position = p
         bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
@@ -799,45 +798,40 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         reflect(nx: nx, ny: ny, restitution: restitution)
     }
 
-    private func collideFlipper(_ p: inout CGPoint, left: Bool) {
+    private func collideFlipper(_ p: inout CGPoint, previous: CGPoint, left: Bool) {
         let active = left ? leftActive : rightActive
         let pivot = CGPoint(x: left ? 125.0 : 274.0, y: 121.0)
         let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
         let dir: CGFloat = left ? 1 : -1
         let length: CGFloat = 70
-        let tip = CGPoint(x: pivot.x + dir * length * cos(angle),
-                          y: pivot.y + dir * length * sin(angle))
-        let dx = tip.x - pivot.x, dy = tip.y - pivot.y
-        let t = max(0, min(1, ((p.x - pivot.x) * dx + (p.y - pivot.y) * dy)
-                             / (dx*dx + dy*dy)))
-        let closest = CGPoint(x: pivot.x + dx*t, y: pivot.y + dy*t)
-        let d = hypot(p.x - closest.x, p.y - closest.y)
-        let contactRadius: CGFloat = 16
-        guard d < contactRadius, p.y >= closest.y - 5 else { return }
-
-        // Keep the ball above the rubber and prevent repeated collisions
-        // against the same bat from adding momentum every fixed step.
-        p.y = max(p.y, closest.y + contactRadius)
+        let tip = CGPoint(x: pivot.x + dir*length*cos(angle),
+                          y: pivot.y + dir*length*sin(angle))
+        let dx = tip.x-pivot.x, dy = tip.y-pivot.y
+        let t = max(0, min(1, ((p.x-pivot.x)*dx + (p.y-pivot.y)*dy)/(dx*dx+dy*dy)))
+        let closest = CGPoint(x: pivot.x+dx*t, y: pivot.y+dy*t)
+        let distance = hypot(p.x-closest.x, p.y-closest.y)
+        let radius: CGFloat = 16.5 - 3*t
+        let contactY = closest.y + radius
+        let crossed = ballVelocity.dy < 0 && previous.y >= contactY-3 && p.y <= contactY+3
+        let overlapping = distance <= radius+2 && p.y >= closest.y-10 && p.y <= contactY+5
+        guard crossed || overlapping else { return }
+        p.y = max(p.y, contactY+0.5)
         if active && !tilted {
             let lastHit = left ? lastLeftKick : lastRightKick
-            if simTime - lastHit > 0.12 && ballVelocity.dy < 170 {
-                // A sharp motorized rebound; 235 pt/s² gravity makes the ball
-                // visibly decelerate during ascent. Contact near the tip
-                // produces more power and a more lateral shot.
+            if ballVelocity.dy < 60 && simTime-lastHit > 0.10 {
                 let incoming = max(0, -ballVelocity.dy)
-                let upward = min(395, 275 + incoming * 0.34 + 45 * t)
-                ballVelocity = CGVector(dx: dir * (35 + 65 * t), dy: upward)
+                let upward = min(445, 345 + incoming*0.35 + 40*t)
+                ballVelocity = CGVector(dx: dir*(43+65*t), dy: upward)
                 if left { lastLeftKick = simTime } else { lastRightKick = simTime }
                 flipperImpact(at: p)
             } else if ballVelocity.dy < 0 {
-                ballVelocity.dy = abs(ballVelocity.dy) * 0.42
+                ballVelocity.dy = max(125, abs(ballVelocity.dy)*0.65)
             }
         } else if ballVelocity.dy < 0 {
-            ballVelocity = CGVector(dx: ballVelocity.dx * 0.8 + dir*18,
-                                    dy: abs(ballVelocity.dy) * 0.35)
+            ballVelocity = CGVector(dx: ballVelocity.dx*0.75 + dir*22,
+                                    dy: max(80, abs(ballVelocity.dy)*0.58))
         }
     }
-
     private func flipperImpact(at point: CGPoint) {
         let flash = SKShapeNode(circleOfRadius: 9)
         flash.position = point
