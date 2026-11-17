@@ -2,6 +2,12 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
+## v0.3.0 — ball engine rebuild (Mac playtest required)
+
+The ball now uses a fixed-step 120 Hz simulation with explicit table boundaries, target and bumper collisions, scoring, drain handling, and controlled flipper contact. The previous SpriteKit dynamic ball body and multiple competing impulse paths have been removed. The shooter lane still uses a scripted entry, but gameplay afterward is handled by one solver. A green `NEW BALL ENGINE v0.3.0` build identifier is visible on the playfield.
+
+**Important:** This engine has been committed but has not yet been compiled or playtested on macOS. Do not assume gameplay quality or release readiness until local testing passes. This is a stabilization pass, not the promised full table art rebuild.
+
 ## v0.1.0 — playable prototype
 - Native SwiftUI + SpriteKit macOS application.
 - Classic '82 table: ball, two independently controlled flippers, spring plunger, pop bumpers, side walls, slingshot shapes and outlanes.
