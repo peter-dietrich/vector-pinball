@@ -75,6 +75,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var plungerCharging = false
     private var plungerCharge = 0.0
     private var travelingShooterLane = false
+    private var trappedSeconds: TimeInterval = 0
+    private var lastBallPoint = CGPoint.zero
     private var lastTime: TimeInterval = 0
     private var nudges = 0
     private var showDebug = false
@@ -149,13 +151,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         wall([CGPoint(x: 350, y: 70), CGPoint(x: 350, y: 600), CGPoint(x: 340, y: 630)],
              color: .init(red: 0.38, green: 0.78, blue: 0.92, alpha: 1), thickness: 3)
         wall([CGPoint(x: 46, y: 220), CGPoint(x: 75, y: 171), CGPoint(x: 105, y: 129)])
-        wall([CGPoint(x: 346, y: 220), CGPoint(x: 319, y: 171), CGPoint(x: 293, y: 129)])
+        wall([CGPoint(x: 346, y: 237), CGPoint(x: 329, y: 203), CGPoint(x: 314, y: 168), CGPoint(x: 282, y: 131)])
         wall([CGPoint(x: 68, y: 255), CGPoint(x: 103, y: 290), CGPoint(x: 113, y: 360)],
              color: .cyan, thickness: 3)
         wall([CGPoint(x: 322, y: 255), CGPoint(x: 290, y: 290), CGPoint(x: 282, y: 360)],
              color: .cyan, thickness: 3)
-        wall([CGPoint(x: 64, y: 126), CGPoint(x: 92, y: 126), CGPoint(x: 120, y: 95)])
-        wall([CGPoint(x: 329, y: 126), CGPoint(x: 301, y: 126), CGPoint(x: 278, y: 95)])
+        wall([CGPoint(x: 83, y: 120), CGPoint(x: 106, y: 105)])
+        wall([CGPoint(x: 311, y: 120), CGPoint(x: 291, y: 105)])
 
         label("CLASSIC '82", at: CGPoint(x: 197, y: 635), size: 22, color: .init(red: 1, green: 0.81, blue: 0.43, alpha: 1))
         label("THE ORIGINAL ARCADE TABLE", at: CGPoint(x: 197, y: 614), size: 8, color: .init(red: 0.63, green: 0.83, blue: 0.90, alpha: 1))
@@ -211,11 +213,11 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         label("BONUS LANES", at: CGPoint(x: 197, y: 306), size: 12, color: .init(red: 0.96, green: 0.72, blue: 0.41, alpha: 1))
         label("COMPLETE TARGET BANK FOR X2", at: CGPoint(x: 197, y: 514), size: 9, color: .systemYellow)
-        for (x, mirror) in [(105.0, false), (287.0, true)] {
+        for (x, mirror) in [(105.0, false), (268.0, true)] {
             let path = CGMutablePath()
-            path.move(to: CGPoint(x: x - 27, y: 225))
-            path.addLine(to: CGPoint(x: x + 27, y: 225))
-            path.addLine(to: CGPoint(x: mirror ? x + 21 : x - 21, y: 175))
+            path.move(to: CGPoint(x: x - 23, y: 239))
+            path.addLine(to: CGPoint(x: x + 23, y: 239))
+            path.addLine(to: CGPoint(x: mirror ? x + 16 : x - 16, y: 190))
             path.closeSubpath()
             let slingshot = SKShapeNode(path: path)
             slingshot.fillColor = .init(red: 0.62, green: 0.23, blue: 0.36, alpha: 1)
@@ -226,8 +228,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             slingshot.physicsBody?.restitution = 1.05
             playfield.addChild(slingshot)
         }
-        leftFlipper = makeFlipper(at: CGPoint(x: 133, y: 108), left: true)
-        rightFlipper = makeFlipper(at: CGPoint(x: 266, y: 108), left: false)
+        leftFlipper = makeFlipper(at: CGPoint(x: 139, y: 121), left: true)
+        rightFlipper = makeFlipper(at: CGPoint(x: 260, y: 121), left: false)
         label("LAUNCH", at: CGPoint(x: 362, y: 48), size: 8, color: .systemOrange)
     }
 
@@ -286,6 +288,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         plungerCharging = false
         plungerCharge = 0
         travelingShooterLane = false
+        trappedSeconds = 0
         bonus = 0
         multiplier = 1
         bankHits.removeAll()
@@ -321,6 +324,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ball = node
         awaitingServe = false
         travelingShooterLane = false
+        trappedSeconds = 0
+        lastBallPoint = node.position
         tilted = false
         refreshHUD()
     }
@@ -506,6 +511,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ball = nil
         plungerCharging = false
         travelingShooterLane = false
+        trappedSeconds = 0
         nudges = 0
         let earned = tilted ? 0 : bonus * multiplier
         if earned > 0 { addScore(earned) }
