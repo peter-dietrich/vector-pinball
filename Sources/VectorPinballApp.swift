@@ -77,7 +77,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "REBOUND ENGINE v0.4.2"
+    private let buildTag = "ARMORED TABLE v0.5.0"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -89,6 +89,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var trappedSeconds: TimeInterval = 0
     private var trailTick: TimeInterval = 0
     private var lastBallPoint = CGPoint.zero
+    private var lowerTrapTime = 0.0
+    private var lastSlingshot: TimeInterval = -10
     private var lastTime: TimeInterval = 0
     private var nudges = 0
     private var showDebug = false
@@ -182,8 +184,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             target.position = CGPoint(x: 105 + 46*i, y: 569 - ((i % 2) * 13))
             target.name = "target_\(i)"
             target.fillColor = i % 2 == 0 ? .systemOrange : .systemTeal
-            target.strokeColor = .white
-            target.lineWidth = 1.7
+            target.fillColor = .clear
+            target.strokeColor = .clear
+            target.addChild(SiegeMechanicalArt.sprite(.sentry, size: CGSize(width: 26, height: 38)))
             target.physicsBody = SKPhysicsBody(rectangleOf: CGSize(width: 22, height: 31))
             target.physicsBody?.isDynamic = false
             target.physicsBody?.categoryBitMask = Collision.target
@@ -197,9 +200,10 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             let bumper = SKShapeNode(circleOfRadius: 25)
             bumper.position = p
             bumper.fillColor = SKColor(red: 0.71, green: 0.27, blue: 0.32, alpha: 1)
-            bumper.strokeColor = .init(red: 1, green: 0.87, blue: 0.47, alpha: 1)
-            bumper.lineWidth = 5
-            bumper.glowWidth = 6
+            bumper.fillColor = .clear
+            bumper.strokeColor = .clear
+            bumper.glowWidth = 0
+            bumper.addChild(SiegeMechanicalArt.sprite(.reactor, size: CGSize(width: 55, height: 55)))
             bumper.physicsBody = SKPhysicsBody(circleOfRadius: 25)
             bumper.physicsBody?.isDynamic = false
             bumper.physicsBody?.categoryBitMask = Collision.bumper
@@ -211,18 +215,22 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             inset.fillColor = .init(red: 0.99, green: 0.71, blue: 0.29, alpha: 1)
             inset.strokeColor = .white
             inset.lineWidth = 2
+            inset.isHidden = true
             bumper.addChild(inset)
             let highlight = SKShapeNode(circleOfRadius: 5)
             highlight.position = CGPoint(x: -5, y: 5)
             highlight.fillColor = .white.withAlphaComponent(0.6)
             highlight.strokeColor = .clear
+            highlight.isHidden = true
             bumper.addChild(highlight)
         }
         for x in [105.0, 164.0, 223.0, 282.0] {
             let light = SKShapeNode(circleOfRadius: 10)
             light.position = CGPoint(x: x, y: 330)
             light.fillColor = .init(red: 0.24, green: 0.70, blue: 0.77, alpha: 1)
-            light.strokeColor = .white
+            light.fillColor = .clear
+            light.strokeColor = .clear
+            light.addChild(SiegeMechanicalArt.sprite(.insert, size: CGSize(width: 23, height: 23)))
             light.name = "lane_\(laneNodes.count)"
             let sensor = SKPhysicsBody(circleOfRadius: 11)
             sensor.isDynamic = false
@@ -242,9 +250,12 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             path.addLine(to: CGPoint(x: mirror ? x + 16 : x - 16, y: 190))
             path.closeSubpath()
             let slingshot = SKShapeNode(path: path)
-            slingshot.fillColor = .init(red: 0.62, green: 0.23, blue: 0.36, alpha: 1)
-            slingshot.strokeColor = .init(red: 1, green: 0.71, blue: 0.45, alpha: 1)
-            slingshot.lineWidth = 3
+            slingshot.fillColor = .clear
+            slingshot.strokeColor = .clear
+            slingshot.lineWidth = 0
+            let shield = SiegeMechanicalArt.sprite(.shield, size: CGSize(width: 65, height: 70), mirrored: mirror)
+            shield.position = CGPoint(x: x, y: 207)
+            playfield.addChild(shield)
             slingshot.physicsBody = SKPhysicsBody(polygonFrom: path)
             slingshot.physicsBody?.isDynamic = false
             slingshot.physicsBody?.restitution = 0.8
