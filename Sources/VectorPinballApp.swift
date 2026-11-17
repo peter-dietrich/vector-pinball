@@ -76,6 +76,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var plungerCharge = 0.0
     private var travelingShooterLane = false
     private var trappedSeconds: TimeInterval = 0
+    private var trailTick: TimeInterval = 0
     private var lastBallPoint = CGPoint.zero
     private var lastTime: TimeInterval = 0
     private var nudges = 0
@@ -195,6 +196,11 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             inset.strokeColor = .white
             inset.lineWidth = 2
             bumper.addChild(inset)
+            let highlight = SKShapeNode(circleOfRadius: 5)
+            highlight.position = CGPoint(x: -5, y: 5)
+            highlight.fillColor = .white.withAlphaComponent(0.6)
+            highlight.strokeColor = .clear
+            bumper.addChild(highlight)
         }
         for x in [105.0, 164.0, 223.0, 282.0] {
             let light = SKShapeNode(circleOfRadius: 10)
@@ -361,10 +367,16 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private func serveBall() {
         guard running else { return }
         let node = SKShapeNode(circleOfRadius: 8)
+        node.name = "pinball"
         node.fillColor = .init(red: 0.90, green: 0.94, blue: 0.99, alpha: 1)
         node.strokeColor = .white
         node.lineWidth = 2
         node.glowWidth = 1
+        let glint = SKShapeNode(circleOfRadius: 3)
+        glint.fillColor = .white
+        glint.strokeColor = .clear
+        glint.position = CGPoint(x: -2, y: 3)
+        node.addChild(glint)
         node.position = CGPoint(x: 362, y: 105)
         let body = SKPhysicsBody(circleOfRadius: 8)
         body.affectedByGravity = false
@@ -483,16 +495,22 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             pulse.zPosition = 9
             playfield.addChild(pulse)
             pulse.run(.sequence([.group([.scale(to: 2.5, duration: 0.18), .fadeOut(withDuration: 0.18)]), .removeFromParent()]))
+            if let bumper = other.node {
+                bumper.run(.sequence([.scale(to: 1.13, duration: 0.05), .scale(to: 1, duration: 0.14)]))
+            }
+            impactFlash(at: contact.contactPoint, points: 100)
             if let ball {
                 let dx = ball.position.x - contact.contactPoint.x
                 ball.physicsBody?.applyImpulse(CGVector(dx: dx * 0.12, dy: 8))
             }
         } else if bits & Collision.target != 0 {
             addScore(250)
+            impactFlash(at: contact.contactPoint, points: 250)
             bonus += 100
             if let name = other.node?.name, let index = Int(name.replacingOccurrences(of: "target_", with: "")), !bankHits.contains(index) {
                 bankHits.insert(index)
                 targetNodes[index].alpha = 0.35
+                targetNodes[index].run(.sequence([.scale(to: 1.18, duration: 0.06), .scale(to: 1, duration: 0.15)]))
                 if bankHits.count == targetNodes.count {
                     multiplier = min(5, multiplier + 1)
                     addScore(2000)
@@ -505,6 +523,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if let name = other.node?.name, let index = Int(name.replacingOccurrences(of: "lane_", with: "")), !laneHits.contains(index) {
                 laneHits.insert(index)
                 addScore(500)
+                impactFlash(at: contact.contactPoint, points: 500)
                 bonus += 250
                 laneNodes[index].alpha = 0.35
                 if laneHits.count == laneNodes.count {
@@ -516,6 +535,17 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             }
         }
         bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
+    }
+
+    private func impactFlash(at point: CGPoint, points: Int) {
+        let feedback = SKLabelNode(fontNamed: "Menlo-Bold")
+        feedback.text = "+\(points)"
+        feedback.fontSize = 13
+        feedback.fontColor = .systemYellow
+        feedback.position = point
+        feedback.zPosition = 40
+        playfield.addChild(feedback)
+        feedback.run(.sequence([.group([.moveBy(x: 0, y: 28, duration: 0.45), .fadeOut(withDuration: 0.45)]), .removeFromParent()]))
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -555,6 +585,17 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         if let body = ball.physicsBody {
             let speed = hypot(body.velocity.dx, body.velocity.dy)
             let p = ball.position
+            trailTick += dt
+            if speed > 160 && trailTick >= 0.055 && !travelingShooterLane {
+                trailTick = 0
+                let streak = SKShapeNode(circleOfRadius: 3)
+                streak.position = p
+                streak.fillColor = .white.withAlphaComponent(0.35)
+                streak.strokeColor = .clear
+                streak.zPosition = 3
+                playfield.addChild(streak)
+                streak.run(.sequence([.fadeOut(withDuration: 0.15), .removeFromParent()]))
+            }
             // The original lower-right geometry created a stable dead-ball pocket.
             // Rescue after genuinely stationary movement, not during an active shot.
             let trapped = p.x > 280 && p.x < 345 && p.y > 130 && p.y < 245
