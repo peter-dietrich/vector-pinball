@@ -45,8 +45,18 @@ final class PinballSKView: SKView {
     }
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        window?.makeFirstResponder(self)
+        NotificationCenter.default.removeObserver(self, name: NSWindow.didResignKeyNotification, object: nil)
+        if let window {
+            NotificationCenter.default.addObserver(self,
+                selector: #selector(releaseKeysWhenWindowResigns(_:)),
+                name: NSWindow.didResignKeyNotification, object: window)
+            window.makeFirstResponder(self)
+        }
     }
+    @objc private func releaseKeysWhenWindowResigns(_ notification: Notification) {
+        (scene as? Classic82Scene)?.releaseAllControls()
+    }
+    deinit { NotificationCenter.default.removeObserver(self) }
     override func resignFirstResponder() -> Bool {
         (scene as? Classic82Scene)?.releaseAllControls()
         return super.resignFirstResponder()
