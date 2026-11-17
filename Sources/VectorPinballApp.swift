@@ -707,12 +707,25 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             simulationRemainder -= fixed
             loops += 1
         }
+        simulationRemainder = min(simulationRemainder, 0.05)
         if ball.position.y < 60 {
             drainBall()
             return
         }
         let p = ball.position
         let speed = hypot(ballVelocity.dx, ballVelocity.dy)
+        // Detect pathological collision orbits even when instantaneous speed is high.
+        if hypot(p.x-progressSample.x, p.y-progressSample.y) > 26 {
+            progressSample = p
+            stalledFrameTime = 0
+        } else {
+            stalledFrameTime += dt
+            if stalledFrameTime > 2 {
+                recoverBall(manual: false)
+                stalledFrameTime = 0
+                progressSample = ball.position
+            }
+        }
         trailTick += dt
         if speed > 180 && trailTick > 0.08 {
             trailTick = 0
