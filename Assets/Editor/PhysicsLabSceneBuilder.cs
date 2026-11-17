@@ -89,21 +89,21 @@ namespace FunCity.Pinball.Editor
             Debug.Log("Physics lab created at " + dir + "/PhysicsLab.unity. Press Play.");
         }
 
-        private static PhysicMaterial MakeMaterial(string name, float bounciness, float friction, Color color)
+        private static PhysicsMaterial MakeMaterial(string name, float bounciness, float friction, Color color)
         {
             Directory.CreateDirectory("Assets/PhysicsMaterials");
             var path = "Assets/PhysicsMaterials/" + name.Replace(" ", "") + ".physicMaterial";
-            var existing = AssetDatabase.LoadAssetAtPath<PhysicMaterial>(path);
+            var existing = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(path);
             if (existing == null)
             {
-                existing = new PhysicMaterial(name);
+                existing = new PhysicsMaterial(name);
                 AssetDatabase.CreateAsset(existing, path);
             }
             existing.bounciness = bounciness;
             existing.dynamicFriction = friction;
             existing.staticFriction = friction;
-            existing.bounceCombine = PhysicMaterialCombine.Maximum;
-            existing.frictionCombine = PhysicMaterialCombine.Average;
+            existing.bounceCombine = PhysicsMaterialCombine.Maximum;
+            existing.frictionCombine = PhysicsMaterialCombine.Average;
             return existing;
         }
 
@@ -118,7 +118,7 @@ namespace FunCity.Pinball.Editor
         }
 
         private static void StaticWall(string name, Vector3 position, Vector3 size,
-                                       PhysicMaterial material, float zAngle = 0)
+                                       PhysicsMaterial material, float zAngle = 0)
         {
             var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
             wall.name = name;
@@ -129,7 +129,7 @@ namespace FunCity.Pinball.Editor
             wall.GetComponent<Renderer>().sharedMaterial = MakeRenderMaterial(name, new Color(0.15f, 0.32f, 0.36f));
         }
 
-        private static void Bumper(string name, Vector3 position, PhysicMaterial material)
+        private static void Bumper(string name, Vector3 position, PhysicsMaterial material)
         {
             var obj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             obj.name = name;
@@ -140,7 +140,7 @@ namespace FunCity.Pinball.Editor
         }
 
         private static HingeJoint CreateFlipper(string name, float pivotX, float rotation,
-                                                 PhysicMaterial material, bool left)
+                                                 PhysicsMaterial material, bool left)
         {
             var obj = new GameObject(name);
             obj.transform.position = new Vector3(pivotX, PinballDimensions.FlipperPivotY, 0);
