@@ -2,6 +2,17 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
+## v0.5.2 — Player control and drain fix
+
+- Resting flipper tip gap: 18.69 table units, about **117% of the 16-unit ball diameter** (designer requested approximately 115%).
+- Flipper skins and collision endpoints now share the corrected 70-unit length and widened pivot spacing.
+- Removed all autonomous lower-playfield ball rescues and unpowered flipper launch impulses: the ball should drain if not played.
+- Active left/right flippers remain powered only by the corresponding controls; `R` is a manual rescue, never automatic.
+- Gameplay speed, scorekeeping and Git-tracked Vector Siege art are unchanged.
+- [Mac test checklist](docs/V0_5_2_PLAYER_CONTROL_QA.md).
+
+**Verification:** GitHub source reviewed, macOS Xcode build and manual playtest pending.
+
 ## v0.5.1 — Gameplay stability
 
 - Release stuck A/D and Shift flipper states on window focus loss, ball drain, game restart, and tilt.
