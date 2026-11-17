@@ -43,6 +43,14 @@ final class PinballSKView: SKView {
         let right = event.modifierFlags.contains(.shift) && event.keyCode == 60
         if event.keyCode == 60 { (scene as? Classic82Scene)?.setFlipper(left: false, active: right) }
     }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        window?.makeFirstResponder(self)
+    }
+    override func resignFirstResponder() -> Bool {
+        (scene as? Classic82Scene)?.releaseAllControls()
+        return super.resignFirstResponder()
+    }
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
     }
@@ -77,7 +85,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "ARMORED TABLE v0.5.0"
+    private let buildTag = "GAMEPLAY STABILITY v0.5.1"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -90,6 +98,15 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var trailTick: TimeInterval = 0
     private var lastBallPoint = CGPoint.zero
     private var lowerTrapTime = 0.0
+    private var lastRecoveryTime: TimeInterval = -100
+    private var recoveryCount = 0
+    private var stalledFrameTime: TimeInterval = 0
+    private var progressSample = CGPoint.zero
+    private var inputReleaseTime: TimeInterval = 0
+    private var leftKeyHeld = false
+    private var rightKeyHeld = false
+    private var leftShiftHeld = false
+    private var rightShiftHeld = false
     private var lastSlingshot: TimeInterval = -10
     private var lastTime: TimeInterval = 0
     private var nudges = 0
@@ -421,6 +438,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func beginGame() {
         isPaused = false
+        releaseAllControls()
         ball?.removeFromParent()
         ball = nil
         score = 0
@@ -434,6 +452,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         shooterElapsed = 0
         trappedSeconds = 0
         lowerTrapTime = 0
+        recoveryCount = 0
+        lastRecoveryTime = -100
+        stalledFrameTime = 0
         bonus = 0
         multiplier = 1
         lastLeftKick = -10
@@ -474,6 +495,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         trappedSeconds = 0
         lowerTrapTime = 0
         lastBallPoint = node.position
+        progressSample = node.position
+        stalledFrameTime = 0
         tilted = false
         refreshHUD()
     }
@@ -496,8 +519,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     func handleKey(_ key: UInt16, pressed: Bool) {
         switch key {
         case 36: if pressed { beginGame() }
-        case 0: setFlipper(left: true, active: pressed)
-        case 2: setFlipper(left: false, active: pressed)
+        case 0: leftKeyHeld = pressed; syncFlippers()
+        case 2: rightKeyHeld = pressed; syncFlippers()
         case 49:
             if pressed, running, (ball?.position.x ?? 0) > 345 { plungerCharging = true }
             else if plungerCharging { plungerCharging = false; launchBall() }
@@ -507,6 +530,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if pressed, running { isPaused.toggle(); statusLabel.text = isPaused ? "PAUSED" : "PLAY BALL" }
         case 17:
             if pressed { showDebug.toggle(); debugLabel.isHidden = !showDebug }
+        case 15: // R manually unsticks one ball without resetting the score.
+            if pressed { recoverBall(manual: true) }
         case 11: // B reloads the Git-tracked bundled background.
             if pressed { loadTableArt() }
         default: break
@@ -514,6 +539,25 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     }
 
     func setFlipper(left: Bool, active: Bool) {
+        if left { leftShiftHeld = active } else { rightShiftHeld = active }
+        syncFlippers()
+    }
+
+    func releaseAllControls() {
+        leftKeyHeld = false
+        rightKeyHeld = false
+        leftShiftHeld = false
+        rightShiftHeld = false
+        plungerCharging = false
+        syncFlippers()
+    }
+
+    private func syncFlippers() {
+        setFlipperVisual(left: true, active: leftKeyHeld || leftShiftHeld)
+        setFlipperVisual(left: false, active: rightKeyHeld || rightShiftHeld)
+    }
+
+    private func setFlipperVisual(left: Bool, active: Bool) {
         if left { leftActive = active } else { rightActive = active }
         let node = left ? leftFlipper : rightFlipper
         let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
