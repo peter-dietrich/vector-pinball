@@ -121,14 +121,20 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         showAttract()
     }
 
-    private func wall(_ points: [CGPoint], color: SKColor = .init(red: 0.75, green: 0.62, blue: 0.36, alpha: 1), thickness: CGFloat = 4) {
+    private func wall(_ points: [CGPoint], color: SKColor = .init(red: 0.34, green: 0.94, blue: 0.43, alpha: 0.94), thickness: CGFloat = 4) {
         guard let first = points.first else { return }
         let path = CGMutablePath()
         path.move(to: first)
         for point in points.dropFirst() { path.addLine(to: point) }
+        let back = SKShapeNode(path: path)
+        back.strokeColor = SKColor(red: 0.10, green: 0.20, blue: 0.23, alpha: 0.98)
+        back.lineWidth = thickness + 5
+        back.zPosition = 1
+        playfield.addChild(back)
         let shape = SKShapeNode(path: path)
         shape.strokeColor = color
         shape.lineWidth = thickness
+        shape.zPosition = 2
         shape.glowWidth = 1.5
         shape.physicsBody = SKPhysicsBody(edgeChainFrom: path)
         shape.physicsBody?.isDynamic = false
@@ -152,7 +158,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let frame = SKShapeNode(rectOf: CGSize(width: 366, height: 670), cornerRadius: 27)
         frame.position = CGPoint(x: 210, y: 355)
         frame.fillColor = SKColor(red: 0.09, green: 0.13, blue: 0.23, alpha: 1)
-        frame.strokeColor = SKColor(red: 0.70, green: 0.53, blue: 0.30, alpha: 1)
+        frame.strokeColor = SKColor(red: 0.31, green: 0.53, blue: 0.57, alpha: 1)
         frame.lineWidth = 6
         frame.zPosition = -3
         playfield.addChild(frame)
@@ -164,7 +170,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         wall([CGPoint(x: 46, y: 220), CGPoint(x: 75, y: 171), CGPoint(x: 105, y: 129)])
         wall([CGPoint(x: 346, y: 237), CGPoint(x: 329, y: 203), CGPoint(x: 314, y: 168), CGPoint(x: 282, y: 131)])
         wall([CGPoint(x: 68, y: 255), CGPoint(x: 103, y: 290), CGPoint(x: 113, y: 360)],
-             color: .cyan, thickness: 3)
+             color: .systemGreen, thickness: 3)
         wall([CGPoint(x: 322, y: 255), CGPoint(x: 290, y: 290), CGPoint(x: 282, y: 360)],
              color: .cyan, thickness: 3)
         wall([CGPoint(x: 83, y: 120), CGPoint(x: 106, y: 105)])
