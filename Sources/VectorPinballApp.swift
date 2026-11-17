@@ -75,6 +75,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var plungerCharging = false
     private var plungerCharge = 0.0
     private var travelingShooterLane = false
+    private var shooterElapsed: TimeInterval = 0
+    private var shooterDuration: TimeInterval = 0.8
+    private let buildTag = "PHYSICS RESET v0.2.2"
     private var trappedSeconds: TimeInterval = 0
     private var trailTick: TimeInterval = 0
     private var lastBallPoint = CGPoint.zero
@@ -99,7 +102,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     override func didMove(to view: SKView) {
         backgroundColor = SKColor(red: 0.025, green: 0.035, blue: 0.075, alpha: 1)
-        physicsWorld.gravity = CGVector(dx: 0, dy: -265)
+        physicsWorld.gravity = CGVector(dx: 0, dy: -180)
         physicsWorld.contactDelegate = self
         addChild(playfield)
         buildTable()
@@ -239,6 +242,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         leftFlipper = makeFlipper(at: CGPoint(x: 139, y: 121), left: true)
         rightFlipper = makeFlipper(at: CGPoint(x: 260, y: 121), left: false)
         label("LAUNCH", at: CGPoint(x: 362, y: 48), size: 8, color: .systemOrange)
+        label(buildTag, at: CGPoint(x: 210, y: 657), size: 9, color: .systemGreen)
         buildMechanicalArt()
     }
 
@@ -355,6 +359,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         plungerCharging = false
         plungerCharge = 0
         travelingShooterLane = false
+        shooterElapsed = 0
         trappedSeconds = 0
         bonus = 0
         multiplier = 1
@@ -397,6 +402,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ball = node
         awaitingServe = false
         travelingShooterLane = false
+        shooterElapsed = 0
         trappedSeconds = 0
         lastBallPoint = node.position
         tilted = false
@@ -407,14 +413,17 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         guard running, !travelingShooterLane, let ball,
               ball.position.x > 345, ball.position.y < 180 else { return }
         travelingShooterLane = true
-        // Keep the ball centered in the dedicated shooter channel until it reaches
-        // the upper feed. A leftward impulse here caused it to hit the lane divider.
+        shooterElapsed = 0
+        // The shooter is a deterministic animation. SpriteKit's side-wall
+        // collision at launch was producing inconsistent ball trajectories.
+        shooterDuration = 1.05 - plungerCharge * 0.30
+        ball.physicsBody?.velocity = .zero
         ball.physicsBody?.affectedByGravity = false
-        ball.physicsBody?.velocity = CGVector(dx: 0, dy: 620 + plungerCharge * 90)
+        ball.physicsBody?.isDynamic = false
         plungerCharging = false
         plungerCharge = 0
-        statusLabel.text = "BALL LAUNCHED"
-        subtitleLabel.text = "USE A / D OR SHIFT FOR FLIPPERS"
+        statusLabel.text = "SHOOTER LANE"
+        subtitleLabel.text = "CONTROLLED LAUNCH • PHYSICS RESET"
     }
 
     func handleKey(_ key: UInt16, pressed: Bool) {
@@ -503,7 +512,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             impactFlash(at: contact.contactPoint, points: 100)
             if let ball {
                 let dx = ball.position.x - contact.contactPoint.x
-                ball.physicsBody?.applyImpulse(CGVector(dx: max(-2, min(2, dx * 0.06)), dy: 3.0))
+                ball.physicsBody?.applyImpulse(CGVector(dx: max(-1, min(1, dx * 0.025)), dy: 1.5))
             }
         } else if bits & Collision.target != 0 {
             addScore(250)
@@ -566,19 +575,24 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         guard running, let ball, !awaitingServe else { return }
         if travelingShooterLane {
-            if ball.position.y >= 568 {
-                travelingShooterLane = false
-                // Feed into the upper-right playfield, clear of both shooter
-                // divider and outside cabinet walls.
-                ball.position = CGPoint(x: 316, y: 609)
-                ball.physicsBody?.affectedByGravity = true
-                ball.physicsBody?.velocity = CGVector(dx: -65, dy: 90)
-                statusLabel.text = "PLAY BALL"
-            } else if ball.position.y < 75 {
-                // Safety reset for an unexpected lane collision.
-                ball.position = CGPoint(x: 362, y: 105)
-                ball.physicsBody?.velocity = CGVector(dx: 0, dy: 650)
+            shooterElapsed += dt
+            let t = min(1, shooterElapsed / shooterDuration)
+            // Follow the shooter lane until the ball has cleared its top.
+            if t < 0.72 {
+                ball.position = CGPoint(x: 362, y: 105 + 510 * (t / 0.72))
+            } else {
+                let curve = (t - 0.72) / 0.28
+                ball.position = CGPoint(x: 362 - 46 * curve, y: 615 - 12 * curve)
             }
+            if t >= 1 {
+                travelingShooterLane = false
+                ball.position = CGPoint(x: 316, y: 603)
+                ball.physicsBody?.isDynamic = true
+                ball.physicsBody?.affectedByGravity = true
+                ball.physicsBody?.velocity = CGVector(dx: -45, dy: 15)
+                statusLabel.text = "PLAY BALL"
+            }
+            return
         }
         if ball.position.y < 46 || ball.position.x < 25 || ball.position.x > 395 {
             drainBall()
@@ -604,7 +618,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if trapped && speed < 30 && hypot(p.x - lastBallPoint.x, p.y - lastBallPoint.y) < 2 {
                 trappedSeconds += dt
                 if trappedSeconds > 1 {
-                    body.applyImpulse(CGVector(dx: -2.2, dy: 4.5))
+                    body.applyImpulse(CGVector(dx: -1.4, dy: 2.8))
                     trappedSeconds = 0
                     statusLabel.text = "BALL RESCUE"
                 }
@@ -625,8 +639,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                     impactFlash(at: p, points: 0)
                 }
             }
-            if speed > 650 {
-                let factor = 650/speed
+            if speed > 430 {
+                let factor = 430/speed
                 body.velocity = CGVector(dx: body.velocity.dx * factor, dy: body.velocity.dy * factor)
             }
             if showDebug {
@@ -641,6 +655,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ball = nil
         plungerCharging = false
         travelingShooterLane = false
+        shooterElapsed = 0
         trappedSeconds = 0
         nudges = 0
         let earned = tilted ? 0 : bonus * multiplier
