@@ -1,7 +1,6 @@
 import AppKit
 import SpriteKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 @main
 struct VectorPinballApp: App {
@@ -78,13 +77,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "VECTOR SIEGE TABLE v0.4.0"
+    private let buildTag = "GIT BUNDLED ART v0.4.1"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
     private var bumperNodes = [SKShapeNode]()
     private var backgroundArt: SKNode?
-    private let artStorageName = "vector_siege_playfield.png"
+    private let artResourceName = "VectorSiege_Pinball_Background"
     private var previousFlipperL = false
     private var previousFlipperR = false
     private var trappedSeconds: TimeInterval = 0
@@ -342,46 +341,15 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         label("DEFEND THE GRID", at: CGPoint(x: 197, y: 184), size: 10, color: .systemGreen)
     }
 
-    private func artFileURL() -> URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory,
-                                                  in: .userDomainMask).first else { return nil }
-        return base.appendingPathComponent("VectorPinball", isDirectory: true)
-                   .appendingPathComponent(artStorageName)
-    }
-
-    private func chooseBackgroundArt() {
-        // Native desktop workflow: a one-time import stores the image locally.
-        // All mechanics remain separate SpriteKit nodes above this background.
-        let picker = NSOpenPanel()
-        picker.title = "Select Vector Siege pinball playfield artwork"
-        picker.message = "Select the provided Vector Siege playfield image."
-        picker.allowedContentTypes = [.png, .jpeg, .tiff]
-        picker.allowsMultipleSelection = false
-        picker.canChooseFiles = true
-        picker.canChooseDirectories = false
-        guard picker.runModal() == .OK, let source = picker.url,
-              let destination = artFileURL() else { return }
-        do {
-            try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(),
-                                                     withIntermediateDirectories: true)
-            if source.standardizedFileURL != destination.standardizedFileURL {
-                if FileManager.default.fileExists(atPath: destination.path) {
-                    try FileManager.default.removeItem(at: destination)
-                }
-                try FileManager.default.copyItem(at: source, to: destination)
-            }
-            loadTableArt()
-            statusLabel.text = "VECTOR SIEGE ART LOADED"
-        } catch {
-            statusLabel.text = "ART IMPORT FAILED: \(error.localizedDescription)"
-        }
-    }
-
     private func loadTableArt() {
         backgroundArt?.removeFromParent()
         backgroundArt = nil
-        guard let url = artFileURL(),
-              let image = NSImage(contentsOf: url) else { return }
+        guard let url = Bundle.main.url(forResource: artResourceName, withExtension: "png"),
+              let image = NSImage(contentsOf: url) else {
+            // Missing checked-in resource should be visible, not silently ignored.
+            statusLabel?.text = "MISSING BUNDLED TABLE ART"
+            return
+        }
         let art = SKSpriteNode(texture: SKTexture(image: image))
         // This is a portrait 2:3 image; the visible playfield is ~350 x 620.
         // Scale the artwork within the machine without warping its proportions.
@@ -419,7 +387,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func showAttract() {
         statusLabel.text = "PRESS RETURN TO START"
-        subtitleLabel.text = "A/D FLIPPERS • SPACE LAUNCH • B LOAD TABLE ART"
+        subtitleLabel.text = "A/D FLIPPERS • SPACE LAUNCH • B RELOAD ART"
     }
 
     private func refreshHUD() {
@@ -516,8 +484,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if pressed, running { isPaused.toggle(); statusLabel.text = isPaused ? "PAUSED" : "PLAY BALL" }
         case 17:
             if pressed { showDebug.toggle(); debugLabel.isHidden = !showDebug }
-        case 11: // B selects and installs background artwork into Application Support.
-            if pressed { chooseBackgroundArt() }
+        case 11: // B reloads the Git-tracked bundled background.
+            if pressed { loadTableArt() }
         default: break
         }
     }
