@@ -592,6 +592,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ballVelocity.dy += impulse.dy * 7
         if nudges == 4 {
             tilted = true
+            releaseAllControls()
             statusLabel.text = "TILT — NUDGE DISABLED"
             subtitleLabel.text = "NUDGE LIMIT RESETS NEXT BALL"
         }
