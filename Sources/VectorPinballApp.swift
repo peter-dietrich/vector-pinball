@@ -893,39 +893,39 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     }
 
     private func collideFlipper(_ p: inout CGPoint, previous: CGPoint, left: Bool) {
-        let active = left ? leftActive : rightActive
-        // An unpowered bat never launches the ball. This is what makes the
-        // center drain meaningful and prevents self-playing at the bottom.
-        guard active && !tilted else { return }
+        // Sweep the ball center across the actual raised bat segment. The
+        // earlier end-point test allowed a ball to tunnel between frames.
+        guard (left ? leftActive : rightActive) && !tilted && ballVelocity.dy < -5 else { return }
         let pivot = CGPoint(x: left ? 122.0 : 277.0, y: 121.0)
-        let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
-        let dir: CGFloat = left ? 1 : -1
+        let angle: CGFloat = left ? 0.40 : -0.40
+        let direction: CGFloat = left ? 1 : -1
         let length: CGFloat = 70
-        let tip = CGPoint(x: pivot.x + dir*length*cos(angle),
-                          y: pivot.y + dir*length*sin(angle))
-        let dx = tip.x-pivot.x, dy = tip.y-pivot.y
-        let rawT = ((p.x-pivot.x)*dx + (p.y-pivot.y)*dy)/(dx*dx+dy*dy)
-        guard rawT > -0.18 && rawT < 1.18 else { return }
-        let t = max(0, min(1, rawT))
-        let closest = CGPoint(x: pivot.x+dx*t, y: pivot.y+dy*t)
-        let radius: CGFloat = 17 - 2.5*t
-        let surface = closest.y + radius
-        let distance = hypot(p.x-closest.x, p.y-closest.y)
-        let crossed = ballVelocity.dy < 0 && previous.y >= surface-5 && p.y <= surface+5
-        let touching = distance < radius+3 && p.y > closest.y-4
-        // No second rebound while the ball is already moving away.
-        guard ballVelocity.dy < -5, crossed || touching else { return }
-        // Separate exactly once above the bat. A falling ball cannot be left
-        // buried in the bat where it would collide repeatedly each frame.
-        p.y = surface + radius*0.35 + 2
+        let tx = direction*cos(angle), ty = direction*sin(angle)
+        let nx = -ty, ny = tx  // upward normal for the left bat
+        let normalX = left ? nx : -nx
+        let normalY = left ? ny : -ny
+        let radius: CGFloat = 15.5
+        let signed0 = (previous.x-pivot.x)*normalX + (previous.y-pivot.y)*normalY
+        let signed1 = (p.x-pivot.x)*normalX + (p.y-pivot.y)*normalY
+        guard signed0 >= radius-4 && signed1 <= radius+4 && signed1 < signed0 else { return }
+        let fraction = max(0, min(1, (signed0-radius)/max(0.001, signed0-signed1)))
+        let hit = CGPoint(x: previous.x + (p.x-previous.x)*fraction,
+                          y: previous.y + (p.y-previous.y)*fraction)
+        let along = (hit.x-pivot.x)*tx + (hit.y-pivot.y)*ty
+        guard along >= -7 && along <= length+7 else { return }
+        let t = max(0, min(1, along/length))
         let lastHit = left ? lastLeftKick : lastRightKick
-        if simTime - lastHit > 0.10 {
-            let incoming = max(0, -ballVelocity.dy)
-            ballVelocity = CGVector(dx: dir*(48+70*t),
-                                    dy: min(450, 330+incoming*0.42+55*t))
-            if left { lastLeftKick = simTime } else { lastRightKick = simTime }
-            flipperImpact(at: p)
-        }
+        guard simTime-lastHit > 0.09 else { return }
+        // Put the ball just above the exact contact point, then send it
+        // away once. No unpowered or repeated energy injection.
+        let center = CGPoint(x: pivot.x+tx*along, y: pivot.y+ty*along)
+        p = CGPoint(x: center.x+normalX*(radius+1),
+                    y: center.y+normalY*(radius+1))
+        let impact = max(0, -ballVelocity.dy)
+        ballVelocity = CGVector(dx: direction*(45+65*t) + CGFloat.random(in: -12...12),
+                                dy: min(445, 325+impact*0.35+45*t))
+        if left { lastLeftKick = simTime } else { lastRightKick = simTime }
+        flipperImpact(at: p)
     }
     private func flipperImpact(at point: CGPoint) {
         let flash = SKShapeNode(circleOfRadius: 9)
