@@ -83,7 +83,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var simulationRemainder = 0.0
     private var ballInShooter = true
     private var bumperNodes = [SKShapeNode]()
-    private var backgroundArt: SKSpriteNode?
+    private var backgroundArt: SKNode?
     private let artStorageName = "vector_siege_playfield.png"
     private var previousFlipperL = false
     private var previousFlipperR = false
@@ -392,11 +392,18 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         // Aspect-fill: the supplied portrait art covers the table, no black bars.
         let filledHeight = max(height, width / max(aspect, 0.01))
         art.size = CGSize(width: filledHeight * aspect, height: filledHeight)
-        art.position = CGPoint(x: 210, y: 355)
-        art.zPosition = -2
+        art.position = .zero
         art.alpha = 0.92
-        playfield.addChild(art)
-        backgroundArt = art
+        let mask = SKShapeNode(rectOf: CGSize(width: 346, height: 626), cornerRadius: 15)
+        mask.fillColor = .white
+        mask.strokeColor = .clear
+        let crop = SKCropNode()
+        crop.position = CGPoint(x: 210, y: 355)
+        crop.zPosition = -2
+        crop.maskNode = mask
+        crop.addChild(art)
+        playfield.addChild(crop)
+        backgroundArt = crop
     }
 
     private func buildHUD() {
