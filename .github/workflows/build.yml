@@ -9,5 +9,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Verify Git-tracked artwork
+        run: |
+          test -f Resources/VectorSiege_Pinball_Background.png
+          echo '162b85ddfe69129b71de5d56744b147ec0fe234e4b8d6d5391665cfa82979335  Resources/VectorSiege_Pinball_Background.png' | shasum -a 256 -c -
       - name: Build Vector Pinball
         run: xcodebuild -project VectorPinball.xcodeproj -scheme VectorPinball -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
