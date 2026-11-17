@@ -33,7 +33,7 @@ Run geometry tests using **Window → General → Test Runner → EditMode → R
 
 The scene generator creates `Assets/Scenes/PhysicsLab.unity` and `Assets/PhysicsMaterials/` in the Unity Editor. These generated files and their Unity `.meta` files **must be checked into Git** after the first successful generation. Until that happens, the repository contains the canonical generator source, but not a pre-generated runnable scene.
 
-Unity-generated `Library/`, `Temp/`, and `Builds/` remain excluded from Git.
+After the first successful scene generation, run `zsh scripts/sync-generated-lab.sh` from the repository root. This commits the new scene, material assets and Unity metadata directly to `main`, ensuring Git remains the source of truth.\n\nUnity-generated `Library/`, `Temp/`, and `Builds/` remain excluded from Git.
 
 ## Physics acceptance gate
 
