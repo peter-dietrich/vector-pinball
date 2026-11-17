@@ -77,7 +77,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "NEW BALL ENGINE v0.3.0"
+    private let buildTag = "NEW BALL ENGINE v0.3.1"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -584,7 +584,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             return
         }
         if ballInShooter { return }
-        simulationRemainder += dt
+        simulationRemainder += dt * 1.25 // 25% faster gameplay; fixed 120 Hz physics steps preserved
         let fixed = 1.0 / 120.0
         var loops = 0
         while simulationRemainder >= fixed && loops < 8 {
