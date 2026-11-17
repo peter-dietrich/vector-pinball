@@ -2,16 +2,26 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
-## v0.4.0 — Vector Siege art preview
+## v0.4.1 — all source and assets in Git
 
-- The first themed pinball playfield is a **Vector Siege tribute**.
-- Press **B** in-game to import the supplied portrait PNG background. It is stored in Application Support and reused on future launches.
-- Dynamic ball, bumpers, flippers, targets and scoring remain independent overlay objects.
-- The background fills and clips within the playfield without distorting the source art.
-- Vector Barrage and Vector Drift themes are planned next; see [table roadmap](docs/TABLE_THEMES.md).
-- Version identifier: `VECTOR SIEGE TABLE v0.4.0`.
+**Git is the only source of truth for game code, table artwork, sound, rules and Xcode resources.** No user-local artwork importer or Application Support art dependency remains.
 
-**Mac test required:** Source is committed, but importing and rendering have not yet been verified through an actual macOS Xcode build.
+The first table artwork is `Resources/VectorSiege_Pinball_Background.png`. It is copied into the game executable bundle by `VectorPinball.xcodeproj` and loaded automatically.
+
+**One-time binary asset check-in required:** The GitHub text-file connector cannot upload this PNG itself. Download the supplied PNG from the chat into `~/Downloads/VectorSiege_Pinball_Background.png`, then:
+
+```zsh
+cd ~/Documents/GitHub/vector-pinball
+git pull --ff-only origin main
+zsh scripts/commit-vector-siege-art.sh
+open VectorPinball.xcodeproj
+```
+
+The script verifies the original image's SHA-256 before committing and pushing it to `main`. After that, every clone and Fun City release build carries identical bundled artwork. The build expects the PNG to exist in Git, and should be treated as incomplete until the asset is pushed.
+
+Never introduce new runtime-specific game assets into Application Support. Local saved scores, settings, and preferences may remain user-specific; those are not source assets.
+
+Vector Siege is table 01. Vector Barrage and Vector Drift will each have independent versioned resources and table definitions.
 
 ## v0.3.0 — ball engine rebuild (Mac playtest required)
 
@@ -48,7 +58,7 @@ xcodebuild -project VectorPinball.xcodeproj -scheme VectorPinball -destination '
 | Key | Action |
 | --- | --- |
 | Return | Start / restart game |
-| B | Import/replace table background art |
+| B | Reload bundled Git-tracked artwork |
 | A or Left Shift | Left flipper (press and hold) |
 | D or Right Shift | Right flipper (press and hold) |
 | Space | Hold to charge plunger, release to launch |
