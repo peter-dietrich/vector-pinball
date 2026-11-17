@@ -729,31 +729,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         }
         let p = ball.position
         let speed = hypot(ballVelocity.dx, ballVelocity.dy)
-        // Detect pathological collision orbits even when instantaneous speed is high.
-        if hypot(p.x-progressSample.x, p.y-progressSample.y) > 26 {
-            progressSample = p
-            stalledFrameTime = 0
-        } else {
-            stalledFrameTime += dt
-            if stalledFrameTime > 2 {
-                recoverBall(manual: false)
-                stalledFrameTime = 0
-                progressSample = ball.position
-            }
-        }
-        // A moving ball can still be stuck in a small orbit. If it fails to
-        // escape a 70-point radius for 3.5 seconds, free it.
-        if hypot(p.x-orbitAnchor.x, p.y-orbitAnchor.y) > 70 {
-            orbitAnchor = p
-            orbitTime = 0
-        } else {
-            orbitTime += dt
-            if orbitTime > 3.5 && !travelingShooterLane {
-                recoverBall(manual: false)
-                orbitAnchor = ball.position
-                orbitTime = 0
-            }
-        }
+        // No automatic ball rescues: an unplayed ball must be able to drain.
         trailTick += dt
         if speed > 180 && trailTick > 0.08 {
             trailTick = 0
@@ -885,21 +861,6 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
             if p.x > 104 && p.x < 198 { collideFlipper(&p, previous: previous, left: true) }
             if p.x > 201 && p.x < 295 { collideFlipper(&p, previous: previous, left: false) }
         }
-        // Stop long-lived ball/post/flipper overlap loops without disturbing
-        // normal slow rolls: only rescue in a tight lower playfield pocket.
-        let slow = hypot(ballVelocity.dx, ballVelocity.dy) < 43
-        let still = hypot(p.x - lastBallPoint.x, p.y - lastBallPoint.y) < 1.4
-        if p.x > 73 && p.x < 324 && p.y > 94 && p.y < 255 && slow && still {
-            lowerTrapTime += dt
-            if lowerTrapTime > 0.32 {
-                ballVelocity = CGVector(dx: p.x < 199 ? 80 : -80, dy: 220)
-                p.y += 2
-                lowerTrapTime = 0
-                statusLabel.text = "BALL FREED"
-            }
-        } else {
-            lowerTrapTime = 0
-        }
         lastBallPoint = p
         ball.position = p
         bonusLabel.text = "BONUS \(bonus) X\(multiplier)    TARGETS \(bankHits.count)/5    LANES \(laneHits.count)/4"
@@ -929,6 +890,9 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
 
     private func collideFlipper(_ p: inout CGPoint, previous: CGPoint, left: Bool) {
         let active = left ? leftActive : rightActive
+        // An unpowered bat never launches the ball. This is what makes the
+        // center drain meaningful and prevents self-playing at the bottom.
+        guard active && !tilted else { return }
         let pivot = CGPoint(x: left ? 122.0 : 277.0, y: 121.0)
         let angle: CGFloat = left ? (active ? 0.40 : -0.23) : (active ? -0.40 : 0.23)
         let dir: CGFloat = left ? 1 : -1
@@ -951,15 +915,12 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         // buried in the bat where it would collide repeatedly each frame.
         p.y = surface + radius*0.35 + 2
         let lastHit = left ? lastLeftKick : lastRightKick
-        if active && !tilted && simTime - lastHit > 0.10 {
+        if simTime - lastHit > 0.10 {
             let incoming = max(0, -ballVelocity.dy)
             ballVelocity = CGVector(dx: dir*(48+70*t),
                                     dy: min(450, 330+incoming*0.42+55*t))
             if left { lastLeftKick = simTime } else { lastRightKick = simTime }
             flipperImpact(at: p)
-        } else if ballVelocity.dy < 0 {
-            ballVelocity.dx = ballVelocity.dx*0.75 + dir*28
-            ballVelocity.dy = max(115, abs(ballVelocity.dy)*0.67)
         }
     }
     private func flipperImpact(at point: CGPoint) {
