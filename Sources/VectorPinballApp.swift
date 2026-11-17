@@ -947,6 +947,27 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         ]))
     }
 
+    private func recoverBall(manual: Bool) {
+        guard running, !awaitingServe, !travelingShooterLane, !ballInShooter,
+              let ball, simTime-lastRecoveryTime > 0.8 else { return }
+        lastRecoveryTime = simTime
+        recoveryCount += 1
+        lowerTrapTime = 0
+        simulationRemainder = 0
+        releaseAllControls()
+        if manual || recoveryCount >= 3 {
+            ball.position = CGPoint(x: 202, y: 284)
+            ballVelocity = CGVector(dx: 70, dy: 155)
+            recoveryCount = 0
+        } else {
+            let outward: CGFloat = ball.position.x < 199 ? 85 : -85
+            ball.position.y = max(ball.position.y + 14, 153)
+            ballVelocity = CGVector(dx: outward, dy: 215)
+        }
+        progressSample = ball.position
+        stalledFrameTime = 0
+        statusLabel.text = manual ? "BALL RESET" : "AUTO BALL RESCUE"
+    }
     private func drainBall() {
         awaitingServe = true
         ball?.removeFromParent()
@@ -955,6 +976,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         travelingShooterLane = false
         shooterElapsed = 0
         trappedSeconds = 0
+        lowerTrapTime = 0
+        releaseAllControls()
         nudges = 0
         let earned = tilted ? 0 : bonus * multiplier
         if earned > 0 { addScore(earned) }
