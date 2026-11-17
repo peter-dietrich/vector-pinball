@@ -82,6 +82,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var nudges = 0
     private var showDebug = false
     private var lastFlipperKick: TimeInterval = 0
+    private var lastLeftKick: TimeInterval = -10
+    private var lastRightKick: TimeInterval = -10
     private var simTime: TimeInterval = 0
     private var bankHits = Set<Int>()
     private var laneHits = Set<Int>()
@@ -610,6 +612,19 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
                 trappedSeconds = 0
             }
             lastBallPoint = p
+            // A held flipper must actively send a falling ball back up the table.
+            // Static SpriteKit collision bodies alone don't transfer motor torque.
+            if !tilted && p.y > 103 && p.y < 174 && body.velocity.dy < 95 {
+                if leftActive && p.x > 94 && p.x < 197 && simTime - lastLeftKick > 0.26 {
+                    body.velocity = CGVector(dx: 65, dy: 345)
+                    lastLeftKick = simTime
+                    
+                } else if rightActive && p.x > 201 && p.x < 307 && simTime - lastRightKick > 0.26 {
+                    body.velocity = CGVector(dx: -65, dy: 345)
+                    lastRightKick = simTime
+                    impactFlash(at: p, points: 0)
+                }
+            }
             if speed > 650 {
                 let factor = 650/speed
                 body.velocity = CGVector(dx: body.velocity.dx * factor, dy: body.velocity.dy * factor)
