@@ -392,18 +392,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         glint.position = CGPoint(x: -2, y: 3)
         node.addChild(glint)
         node.position = CGPoint(x: 362, y: 105)
-        let body = SKPhysicsBody(circleOfRadius: 8)
-        body.affectedByGravity = false
-        body.restitution = 0.66
-        body.friction = 0.055
-        body.linearDamping = 0.24
-        body.angularDamping = 0.22
-        body.mass = 0.075
-        body.categoryBitMask = Collision.ball
-        body.collisionBitMask = UInt32.max
-        body.contactTestBitMask = Collision.bumper | Collision.target | Collision.lane
-        body.usesPreciseCollisionDetection = true
-        node.physicsBody = nil // Manual fixed-step ball solver owns motion and collisions.
+        // The ball intentionally has no SpriteKit physics body.
+        // Its movement and collisions are entirely owned by stepBall(_:).
         ballVelocity = .zero
         ballInShooter = true
         simulationRemainder = 0
@@ -457,20 +447,15 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let node = left ? leftFlipper : rightFlipper
         let angle: CGFloat = left ? (active ? 0.38 : -0.30) : (active ? -0.38 : 0.30)
         node?.removeAction(forKey: "flip")
-        node?.run(SKAction.rotate(toAngle: angle, duration: active ? 0.045 : 0.085, shortestUnitArc: true), withKey: "flip")
-        guard active, running, !tilted, let ball, simTime-lastFlipperKick > 0.045 else { return }
-        // A tuned upward kick supplements SpriteKit's static rotating-shape collision.
-        let dx = ball.position.x - (node?.position.x ?? 0)
-        let dy = ball.position.y - (node?.position.y ?? 0)
-        if abs(dx) < 80 && dy > -10 && dy < 53 {
-            let vx = left ? 35.0 : -35.0
-            ballVelocity = CGVector(dx: vx, dy: max(270, ballVelocity.dy))
-            lastFlipperKick = simTime
-        }
+        node?.run(SKAction.rotate(toAngle: angle,
+                                   duration: active ? 0.045 : 0.085,
+                                   shortestUnitArc: true), withKey: "flip")
+        // The manual fixed-step solver handles flipper contact. Do not add
+        // a separate key-down impulse; that was causing exaggerated shots.
     }
 
     private func nudge(direction: UInt16) {
-        guard running, let ball, nudges < 4 else { return }
+        guard running, ball != nil, nudges < 4 else { return }
         nudges += 1
         let impulse: CGVector
         switch direction {
