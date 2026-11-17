@@ -77,7 +77,7 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
     private var travelingShooterLane = false
     private var shooterElapsed: TimeInterval = 0
     private var shooterDuration: TimeInterval = 0.8
-    private let buildTag = "GIT BUNDLED ART v0.4.1"
+    private let buildTag = "REBOUND ENGINE v0.4.2"
     private var ballVelocity = CGVector.zero
     private var simulationRemainder = 0.0
     private var ballInShooter = true
@@ -416,6 +416,8 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         trappedSeconds = 0
         bonus = 0
         multiplier = 1
+        lastLeftKick = -10
+        lastRightKick = -10
         bankHits.removeAll()
         laneHits.removeAll()
         targetNodes.forEach { $0.alpha = 1 }
@@ -670,12 +672,13 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         let friction = pow(0.997, dt * 120)
         ballVelocity.dx *= friction
         ballVelocity.dy *= friction
-        let maxSpeed = 410.0
+        let maxSpeed = 470.0
         let speed = hypot(ballVelocity.dx, ballVelocity.dy)
         if speed > maxSpeed {
             ballVelocity.dx *= maxSpeed / speed
             ballVelocity.dy *= maxSpeed / speed
         }
+        let previous = ball.position
         var p = ball.position
         p.x += ballVelocity.dx * dt
         p.y += ballVelocity.dy * dt
@@ -697,6 +700,11 @@ final class Classic82Scene: SKScene, SKPhysicsContactDelegate {
         collideSegment(&p, CGPoint(x: 334, y: 234), CGPoint(x: 271, y: 130), restitution: 0.58)
         collideSegment(&p, CGPoint(x: 81, y: 248), CGPoint(x: 110, y: 350), restitution: 0.68)
         collideSegment(&p, CGPoint(x: 313, y: 248), CGPoint(x: 283, y: 350), restitution: 0.68)
+        // Slingshots are now physical collision surfaces, not just artwork.
+        collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 121, y: 239), restitution: 0.94)
+        collideSegment(&p, CGPoint(x: 82, y: 239), CGPoint(x: 89, y: 190), restitution: 0.94)
+        collideSegment(&p, CGPoint(x: 245, y: 239), CGPoint(x: 291, y: 239), restitution: 0.94)
+        collideSegment(&p, CGPoint(x: 291, y: 239), CGPoint(x: 284, y: 190), restitution: 0.94)
 
         // Solid rubber bumpers and target banks use real overlap tests.
         for (i, bumper) in bumperNodes.enumerated() {
