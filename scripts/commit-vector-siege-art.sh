@@ -14,6 +14,12 @@ if ! file "$ASSET" | grep -q "PNG image data"; then
   echo "The supplied asset is not a PNG." >&2
   exit 1
 fi
+EXPECTED="162b85ddfe69129b71de5d56744b147ec0fe234e4b8d6d5391665cfa82979335"
+ACTUAL="$(shasum -a 256 "$ASSET" | awk '{print $1}')"
+if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+  echo "Artwork SHA-256 does not match the approved image. Expected $EXPECTED; got $ACTUAL" >&2
+  exit 1
+fi
 git add "$ASSET"
 if ! git diff --cached --quiet -- "$ASSET"; then
   git commit -m "Add original Vector Siege pinball table artwork"
