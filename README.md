@@ -2,6 +2,17 @@
 
 An original hybrid-physical pinball game for macOS and the Fun City arcade.
 
+## v0.5.1 — Gameplay stability
+
+- Release stuck A/D and Shift flipper states on window focus loss, ball drain, game restart, and tilt.
+- Avoid repeated flipper collision reactions after a ball is already moving upward.
+- Watch for stationary balls **and** balls stuck cycling within a small region; recover automatically.
+- Press **R** to rescue an active ball into the playfield without restarting.
+- Keep all code and image resources Git-tracked; no new external assets are required.
+- See [stability acceptance tests](docs/V0_5_1_STABILITY_QA.md).
+
+**Build status:** Source changes verified in GitHub; macOS compile and gameplay testing pending.
+
 ## v0.5.0 — Armored Vector Siege table
 
 - Procedurally rendered, original high-detail mechanical components in `Sources/VectorSiegeMechanicalArt.swift`; all design data and rendering code live in Git.
@@ -70,6 +81,7 @@ xcodebuild -project VectorPinball.xcodeproj -scheme VectorPinball -destination '
 | --- | --- |
 | Return | Start / restart game |
 | B | Reload bundled Git-tracked artwork |
+| R | Rescue stuck active ball |
 | A or Left Shift | Left flipper (press and hold) |
 | D or Right Shift | Right flipper (press and hold) |
 | Space | Hold to charge plunger, release to launch |
