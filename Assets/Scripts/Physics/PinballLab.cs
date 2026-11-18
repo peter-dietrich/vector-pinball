@@ -16,6 +16,7 @@ namespace FunCity.Pinball
         private bool leftDown;
         private bool rightDown;
         private bool served;
+        private bool showingHelp;
 
         public void Configure(Rigidbody steelBall, HingeJoint left, HingeJoint right, Transform serve)
         {
@@ -30,6 +31,7 @@ namespace FunCity.Pinball
         {
             leftDown = Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftShift);
             rightDown = Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightShift);
+            if (Input.GetKeyDown(KeyCode.F1)) showingHelp = !showingHelp;
             if (Input.GetKeyDown(KeyCode.Return)) ResetBall();
             if (Input.GetKeyDown(KeyCode.Space) && !served) LaunchBall();
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -90,6 +92,26 @@ namespace FunCity.Pinball
             GUI.Label(new Rect(18, 42, 900, 25), "RETURN reset | SPACE launch | A / Left Shift left flipper | D / Right Shift right flipper");
             GUI.Label(new Rect(18, 68, 600, 22),
                 "Resting flipper gap: " + PinballDimensions.GapInBallDiameters.ToString("F2") + " ball diameters");
+            if (GUI.Button(new Rect(Screen.width - 108, 14, 90, 30), "HELP / F1"))
+                showingHelp = !showingHelp;
+            if (showingHelp)
+            {
+                var rect = new Rect(Mathf.Max(24, Screen.width * 0.12f),
+                                    Mathf.Max(105, Screen.height * 0.16f),
+                                    Mathf.Min(660, Screen.width * 0.76f), 330);
+                GUI.Box(rect, "");
+                var x = rect.x + 22;
+                var y = rect.y + 20;
+                GUI.Label(new Rect(x, y, rect.width - 40, 32), "VECTOR PINBALL  /  PHYSICS LAB HELP");
+                GUI.Label(new Rect(x, y + 42, rect.width - 40, 28), "Return: Reset the ball");
+                GUI.Label(new Rect(x, y + 73, rect.width - 40, 28), "Space: Launch the ball");
+                GUI.Label(new Rect(x, y + 104, rect.width - 40, 28), "A / Left Shift: Left flipper");
+                GUI.Label(new Rect(x, y + 135, rect.width - 40, 28), "D / Right Shift: Right flipper");
+                GUI.Label(new Rect(x, y + 176, rect.width - 40, 64),
+                    "A mechanical physics test. Saved games, scores, and polished table gameplay are not yet implemented.");
+                if (GUI.Button(new Rect(x, y + 260, 130, 32), "RETURN TO GAME"))
+                    showingHelp = false;
+            }
         }
 
         private void OnApplicationFocus(bool focus)
