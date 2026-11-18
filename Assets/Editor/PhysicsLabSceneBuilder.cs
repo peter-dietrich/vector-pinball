@@ -187,6 +187,7 @@ namespace FunCity.Pinball.Editor
         [MenuItem("Fun City/Pinball/Build macOS Physics Lab")]
         public static void BuildMac()
         {
+            PinballIconSetup.Configure();
             Build();
             Directory.CreateDirectory("Builds");
             BuildPipeline.BuildPlayer(new BuildPlayerOptions {
